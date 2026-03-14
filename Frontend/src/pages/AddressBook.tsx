@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 
 export default function AddressBook() {
   return (
@@ -35,26 +35,26 @@ export default function AddressBook() {
                     <span className="material-symbols-outlined">account_circle</span>
                   </div>
                   <div className="flex flex-col overflow-hidden">
-                    <h1 className="text-slate-900 dark:text-white text-base font-bold truncate">Nguyễn Văn A</h1>
+                    <h1 className="text-slate-900 dark:text-white text-base font-bold truncate">Nguyá»…n VÄƒn A</h1>
                     <p className="text-slate-500 text-xs truncate">Galaxy Purple Theme</p>
                   </div>
                 </div>
                 <nav className="flex flex-col gap-1">
                   <Link className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" to="/profile">
                     <span className="material-symbols-outlined text-[20px]">person</span>
-                    <span className="text-sm font-medium">Thông tin cá nhân</span>
+                    <span className="text-sm font-medium">ThĂ´ng tin cĂ¡ nhĂ¢n</span>
                   </Link>
                   <Link className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" to="/order-history">
                     <span className="material-symbols-outlined text-[20px]">history</span>
-                    <span className="text-sm font-medium">Lịch sử đơn hàng</span>
+                    <span className="text-sm font-medium">Lá»‹ch sá»­ Ä‘Æ¡n hĂ ng</span>
                   </Link>
                   <Link className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" to="/wishlist">
                     <span className="material-symbols-outlined text-[20px]">favorite</span>
-                    <span className="text-sm font-medium">Danh sách yêu thích</span>
+                    <span className="text-sm font-medium">Danh sĂ¡ch yĂªu thĂ­ch</span>
                   </Link>
                   <Link className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary border-r-4 border-primary" to="/address-book">
                     <span className="material-symbols-outlined text-[20px]">location_on</span>
-                    <span className="text-sm font-bold">Sổ địa chỉ</span>
+                    <span className="text-sm font-bold">Sá»• Ä‘á»‹a chá»‰</span>
                   </Link>
                 </nav>
               </div>
@@ -63,12 +63,12 @@ export default function AddressBook() {
             <div className="flex-1 flex flex-col gap-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex flex-col gap-1">
-                  <h2 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">Sổ địa chỉ</h2>
-                  <p className="text-slate-500 text-sm">Quản lý danh sách địa chỉ giao hàng của bạn để thanh toán nhanh hơn.</p>
+                  <h2 className="text-slate-900 dark:text-white text-3xl font-bold tracking-tight">Sá»• Ä‘á»‹a chá»‰</h2>
+                  <p className="text-slate-500 text-sm">Quáº£n lĂ½ danh sĂ¡ch Ä‘á»‹a chá»‰ giao hĂ ng cá»§a báº¡n Ä‘á»ƒ thanh toĂ¡n nhanh hÆ¡n.</p>
                 </div>
                 <button className="flex items-center justify-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
                   <span className="material-symbols-outlined">add</span>
-                  <span>Thêm địa chỉ mới</span>
+                  <span>ThĂªm Ä‘á»‹a chá»‰ má»›i</span>
                 </button>
               </div>
               {/* Address List */}
@@ -76,7 +76,7 @@ export default function AddressBook() {
                 {/* Default Address Card */}
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border-2 border-primary relative overflow-hidden group">
                   <div className="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold px-3 py-1 uppercase tracking-wider rounded-bl-lg">
-                    Mặc định
+                    Máº·c Ä‘á»‹nh
                   </div>
                   <div className="flex flex-col md:flex-row gap-6">
                     <div className="hidden md:block w-32 h-32 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden shrink-0">
@@ -87,25 +87,25 @@ export default function AddressBook() {
                     <div className="flex-1 flex flex-col justify-between py-1">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <p className="text-slate-900 dark:text-white text-lg font-bold">Nguyễn Văn A</p>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Nhà riêng</span>
+                          <p className="text-slate-900 dark:text-white text-lg font-bold">Nguyá»…n VÄƒn A</p>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">NhĂ  riĂªng</span>
                         </div>
                         <p className="text-primary font-semibold text-sm mb-2 flex items-center gap-1">
                           <span className="material-symbols-outlined text-[18px]">phone</span>
                           090 123 4567
                         </p>
                         <p className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
-                          123 Đường Tím, Phường Galaxy, Quận 1,<br />Thành phố Hồ Chí Minh, Việt Nam
+                          123 ÄÆ°á»ng TĂ­m, PhÆ°á»ng Galaxy, Quáº­n 1,<br />ThĂ nh phá»‘ Há»“ ChĂ­ Minh, Viá»‡t Nam
                         </p>
                       </div>
                       <div className="flex gap-3 mt-6">
                         <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium transition-colors">
                           <span className="material-symbols-outlined text-[18px]">edit</span>
-                          Sửa
+                          Sá»­a
                         </button>
                         <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:border-red-100 dark:hover:border-red-900/30 transition-colors">
                           <span className="material-symbols-outlined text-[18px]">delete</span>
-                          Xoá
+                          XoĂ¡
                         </button>
                       </div>
                     </div>
@@ -122,28 +122,28 @@ export default function AddressBook() {
                     <div className="flex-1 flex flex-col justify-between py-1">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <p className="text-slate-900 dark:text-white text-lg font-bold">Trần Thị B</p>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">Văn phòng</span>
+                          <p className="text-slate-900 dark:text-white text-lg font-bold">Tráº§n Thá»‹ B</p>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">VÄƒn phĂ²ng</span>
                         </div>
                         <p className="text-slate-500 font-semibold text-sm mb-2 flex items-center gap-1">
                           <span className="material-symbols-outlined text-[18px]">phone</span>
                           098 765 4321
                         </p>
                         <p className="text-slate-600 dark:text-slate-400 text-base leading-relaxed">
-                          Toà nhà MobileStore, 456 Đường Galaxy, Phường Tinh Tú, Quận Cầu Giấy,<br />Thủ đô Hà Nội, Việt Nam
+                          ToĂ  nhĂ  MobileStore, 456 ÄÆ°á»ng Galaxy, PhÆ°á»ng Tinh TĂº, Quáº­n Cáº§u Giáº¥y,<br />Thá»§ Ä‘Ă´ HĂ  Ná»™i, Viá»‡t Nam
                         </p>
                       </div>
                       <div className="flex gap-3 mt-6">
                         <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium transition-colors">
                           <span className="material-symbols-outlined text-[18px]">edit</span>
-                          Sửa
+                          Sá»­a
                         </button>
                         <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:text-red-600 hover:border-red-100 transition-colors">
                           <span className="material-symbols-outlined text-[18px]">delete</span>
-                          Xoá
+                          XoĂ¡
                         </button>
                         <button className="hidden md:block ml-auto text-primary text-sm font-bold hover:underline">
-                          Thiết lập mặc định
+                          Thiáº¿t láº­p máº·c Ä‘á»‹nh
                         </button>
                       </div>
                     </div>
@@ -154,7 +154,7 @@ export default function AddressBook() {
                   <div className="size-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:bg-primary/20 group-hover:text-primary transition-colors">
                     <span className="material-symbols-outlined text-3xl">add_location_alt</span>
                   </div>
-                  <span className="text-slate-500 font-bold group-hover:text-primary transition-colors">Thêm một địa chỉ mới</span>
+                  <span className="text-slate-500 font-bold group-hover:text-primary transition-colors">ThĂªm má»™t Ä‘á»‹a chá»‰ má»›i</span>
                 </button>
               </div>
             </div>
@@ -162,11 +162,11 @@ export default function AddressBook() {
           {/* Bottom Section / Footer-like spacing */}
           <footer className="mt-auto py-8 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 md:px-10">
             <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-              <p className="text-slate-500 text-sm">© 2024 MobileStore. All rights reserved.</p>
+              <p className="text-slate-500 text-sm">Â© 2024 MobileStore. All rights reserved.</p>
               <div className="flex gap-6 text-sm text-slate-500">
-                <a className="hover:text-primary" href="#">Chính sách bảo mật</a>
-                <a className="hover:text-primary" href="#">Điều khoản sử dụng</a>
-                <a className="hover:text-primary" href="#">Hỗ trợ khách hàng</a>
+                <a className="hover:text-primary" href="#">ChĂ­nh sĂ¡ch báº£o máº­t</a>
+                <a className="hover:text-primary" href="#">Äiá»u khoáº£n sá»­ dá»¥ng</a>
+                <a className="hover:text-primary" href="#">Há»— trá»£ khĂ¡ch hĂ ng</a>
               </div>
             </div>
           </footer>
@@ -175,3 +175,4 @@ export default function AddressBook() {
     </div>
   );
 }
+

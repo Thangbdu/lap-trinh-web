@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 export default function Home() {
+  const { user, isAuthenticated, logout } = useAuth();
+
   return (
     <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100">
       {/* Header / Navigation */}
@@ -33,10 +36,26 @@ export default function Home() {
               <span className="material-symbols-outlined">shopping_cart</span>
               <span className="absolute top-1 right-1 bg-white text-[#4B0082] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">2</span>
             </Link>
-            <button className="p-2 hover:bg-white/10 rounded-full relative transition-colors">
-              <span className="material-symbols-outlined">person</span>
-            </button>
-            <div className="w-8 h-8 rounded-full bg-cover bg-center border border-primary/20" data-alt="User profile avatar circle" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCRxaOaGkc-g4goMg0JGhfxaZk3kW4m5dPOW88wxVcMdK9DULHZRgeSsyKHM0CSQr0cVaFVO78IZwSji_zX86Hut9J1yB5hwcW-RC_DNJkvopy593IkIGifb1EflVN4dzbz8_mrYIY2AUComWUnX8y12lZIVDR5ANHTRwRPUhNYh-0cXTVnG1A9JrK7euJQ17mPvmf6KsbK6_tzoLwTaCt-S87dHrXsKHDO1yHv7kRP_UJ0Dyw3nkHRatNEHXEWlsfRxUDeNPXNliw')" }}></div>
+            {isAuthenticated ? (
+              <div className="flex items-center gap-3">
+                <Link to="/profile" className="flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-full transition-colors">
+                  <span className="material-symbols-outlined text-lg">person</span>
+                  <span className="text-sm font-medium hidden sm:block">{user?.full_name?.split(' ').pop()}</span>
+                </Link>
+                <button
+                  onClick={logout}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  title="Đăng xuất"
+                >
+                  <span className="material-symbols-outlined text-lg">logout</span>
+                </button>
+              </div>
+            ) : (
+              <Link to="/login" className="flex items-center gap-2 px-4 py-2 bg-white text-[#4B0082] rounded-full font-bold text-sm hover:bg-white/90 transition-colors">
+                <span className="material-symbols-outlined text-lg">login</span>
+                <span className="hidden sm:block">Đăng nhập</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>

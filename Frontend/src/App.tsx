@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import Home from './pages/Home';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
@@ -17,22 +18,25 @@ import AddressBook from './pages/AddressBook';
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/product/:id" element={<ProductDetail />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/otp-verification" element={<OtpVerification />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/order-success" element={<OrderSuccess />} />
-        <Route path="/order-history" element={<OrderHistory />} />
-        <Route path="/wishlist" element={<Wishlist />} />
-        <Route path="/address-book" element={<AddressBook />} />
-      </Routes>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/otp-verification" element={<OtpVerification />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/order-success" element={<OrderSuccess />} />
+          <Route path="/order-history" element={<OrderHistory />} />
+          <Route path="/wishlist" element={<Wishlist />} />
+          <Route path="/address-book" element={<AddressBook />} />
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
+
