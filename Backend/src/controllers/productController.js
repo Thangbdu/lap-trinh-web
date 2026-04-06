@@ -3,12 +3,12 @@ const pool = require('../config/db');
 // Lấy tất cả sản phẩm (có lọc, phân trang)
 exports.getProducts = async (req, res) => {
   try {
-    const { category_id, brand_id, search, sort, page = 1, limit = 12 } = req.query;
+    const { category_id, category_ids, brand_id, search, sort, page = 1, limit = 12 } = req.query;
     const offset = (page - 1) * limit;
 
     let query = `
       SELECT p.*, c.category_name, b.brand_name,
-        (SELECT image_url FROM product_images pi WHERE pi.product_id = p.product_id AND pi.is_primary = 1 LIMIT 1) AS primary_image
+        (SELECT image_url FROM product_images pimg WHERE pimg.product_id = p.product_id AND pimg.is_primary = 1 LIMIT 1) AS primary_image
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.category_id
       LEFT JOIN brands b ON p.brand_id = b.brand_id
@@ -16,7 +16,14 @@ exports.getProducts = async (req, res) => {
     `;
     const params = [];
 
-    if (category_id) {
+    if (category_ids) {
+      // Hỗ trợ nhiều category: category_ids=4,5,8,9,10
+      const ids = category_ids.split(',').map(Number).filter(n => !isNaN(n));
+      if (ids.length > 0) {
+        query += ` AND p.category_id IN (${ids.map(() => '?').join(',')})`;
+        params.push(...ids);
+      }
+    } else if (category_id) {
       query += ' AND p.category_id = ?';
       params.push(category_id);
     }

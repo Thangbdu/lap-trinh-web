@@ -257,7 +257,7 @@ CREATE TABLE `reviews` (
 DROP TABLE IF EXISTS `password_resets`;
 CREATE TABLE `password_resets` (
     `id` INT NOT NULL AUTO_INCREMENT,
-    `email` VARCHAR(255) NOT NULL,
+    `email` VARCHAR(191) NOT NULL,
     `otp_code` VARCHAR(6) NOT NULL,
     `is_verified` BOOLEAN DEFAULT FALSE,
     `expires_at` DATETIME NOT NULL,
@@ -330,10 +330,10 @@ INSERT INTO `categories` (`category_id`, `category_name`, `category_image`, `des
 -- PRODUCTS
 INSERT INTO `products` (`product_id`, `category_id`, `brand_id`, `product_name`, `price`, `old_price`, `thumbnail_url`, `description`, `stock_quantity`, `specifications`, `is_active`, `created_at`, `updated_at`) VALUES
 (1, 1, 1, 'iPhone 15 Pro Max 256GB', 32990000.00, 34990000.00, NULL, NULL, 50, NULL, TRUE, '2026-03-13 22:22:13', '2026-03-13 22:22:13'),
-(2, 1, 2, 'Samsung Galaxy S24 Ultra', 29990000.00, 31990000.00, NULL, NULL, 40, NULL, TRUE, '2026-03-13 22:22:13', '2026-03-13 22:22:13'),
-(3, 1, 3, 'Xiaomi 14 Pro', 22990000.00, 24990000.00, NULL, NULL, 60, NULL, TRUE, '2026-03-13 22:22:13', '2026-03-13 22:22:13'),
+(2, 1, 2, 'Samsung Galaxy S24 Ultra', 29990000.00, 31990000.00, '/uploads/images/products/s24utral.webp', NULL, 40, NULL, TRUE, '2026-03-13 22:22:13', '2026-03-13 22:22:13'),
+(3, 1, 3, 'Xiaomi 14 Pro', 22990000.00, 24990000.00, '/uploads/images/products/Xiaomi_14_Pro_Green.png', NULL, 60, NULL, TRUE, '2026-03-13 22:22:13', '2026-03-13 22:22:13'),
 (4, 2, 1, 'iPad Pro 11 inch M2', 20990000.00, 22990000.00, NULL, NULL, 30, NULL, TRUE, '2026-03-13 22:22:13', '2026-03-13 22:22:13'),
-(5, 3, 1, 'MacBook Air M3 2024', 27990000.00, 29990000.00, NULL, NULL, 25, NULL, TRUE, '2026-03-13 22:22:13', '2026-03-13 22:22:13'),
+(5, 3, 1, 'MacBook Air M3 2024', 27990000.00, 29990000.00, '/uploads/images/products/macbook airm 3 2024.jpg', NULL, 25, NULL, TRUE, '2026-03-13 22:22:13', '2026-03-13 22:22:13'),
 (6, 4, 1, 'AirPods Pro 2', 5990000.00, 6490000.00, NULL, NULL, 100, NULL, TRUE, '2026-03-13 22:22:13', '2026-03-13 22:22:13'),
 (7, 5, 1, 'Apple Watch Series 9', 10490000.00, 11490000.00, NULL, NULL, 45, NULL, TRUE, '2026-03-13 22:22:13', '2026-03-13 22:22:13'),
 (8, 8, 10, 'Sạc dự phòng Anker 10000mAh', 800000.00, 950000.00, NULL, NULL, 200, NULL, TRUE, '2026-03-13 22:22:13', '2026-03-13 22:22:13'),
@@ -343,10 +343,10 @@ INSERT INTO `products` (`product_id`, `category_id`, `brand_id`, `product_name`,
 -- PRODUCT_IMAGES
 INSERT INTO `product_images` (`image_id`, `product_id`, `image_url`, `is_primary`, `created_at`) VALUES
 (1, 1, 'iphone15_pro_max_main.jpg', TRUE, '2026-03-13 22:22:13'),
-(2, 2, 's24_ultra_main.jpg', TRUE, '2026-03-13 22:22:13'),
-(3, 3, 'xiaomi_14_pro_main.jpg', TRUE, '2026-03-13 22:22:13'),
+(2, 2, '/uploads/images/products/s24utral.webp', TRUE, '2026-03-13 22:22:13'),
+(3, 3, '/uploads/images/products/Xiaomi_14_Pro_Green.png', TRUE, '2026-03-13 22:22:13'),
 (4, 4, 'ipad_pro_m2_main.jpg', TRUE, '2026-03-13 22:22:13'),
-(5, 5, 'macbook_air_m3_main.jpg', TRUE, '2026-03-13 22:22:13'),
+(5, 5, '/uploads/images/products/macbook airm 3 2024.jpg', TRUE, '2026-03-13 22:22:13'),
 (6, 6, 'airpods_pro_2_main.jpg', TRUE, '2026-03-13 22:22:13'),
 (7, 7, 'apple_watch_s9_main.jpg', TRUE, '2026-03-13 22:22:13'),
 (8, 8, 'anker_10000_main.jpg', TRUE, '2026-03-13 22:22:13'),

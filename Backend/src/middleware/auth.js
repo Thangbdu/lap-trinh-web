@@ -26,4 +26,12 @@ const authorizeAdmin = (req, res, next) => {
   next();
 };
 
-module.exports = { authenticate, authorizeAdmin };
+// Phân quyền staff (admin + staff đều được)
+const authorizeStaff = (req, res, next) => {
+  if (req.user?.role !== 'admin' && req.user?.role !== 'staff') {
+    return res.status(403).json({ message: 'Bạn không có quyền truy cập.' });
+  }
+  next();
+};
+
+module.exports = { authenticate, authorizeAdmin, authorizeStaff };

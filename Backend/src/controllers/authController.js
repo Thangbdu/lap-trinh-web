@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { sendWelcomeEmail } = require('./emailController');
 require('dotenv').config();
 
 // Đăng ký
@@ -31,6 +32,8 @@ exports.register = async (req, res) => {
       message: 'Đăng ký thành công!',
       data: { user_id: result.insertId, full_name, email },
     });
+    // Gửi email chào mừng (bất đồng bộ, không block response)
+    sendWelcomeEmail(email, full_name).catch(() => {});
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -124,6 +127,37 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+// Đổi mật khẩu
+exports.changePassword = async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+    if (!current_password || !new_password) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ thông tin.' });
+    }
+    if (new_password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu mới phải có ít nhất 6 ký tự.' });
+    }
+
+    const [users] = await pool.query('SELECT * FROM users WHERE user_id = ?', [req.user.user_id]);
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+
+    const isMatch = await bcrypt.compare(current_password, users[0].password_hash);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Mật khẩu hiện tại không đúng.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const new_hash = await bcrypt.hash(new_password, salt);
+    await pool.query('UPDATE users SET password_hash = ? WHERE user_id = ?', [new_hash, req.user.user_id]);
+
+    res.json({ success: true, message: 'Đổi mật khẩu thành công!' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // [Admin] Lấy tất cả users
 exports.getAllUsers = async (req, res) => {
   try {
@@ -135,3 +169,4 @@ exports.getAllUsers = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+

@@ -14,6 +14,8 @@ import OrderSuccess from './pages/OrderSuccess';
 import OrderHistory from './pages/OrderHistory';
 import Wishlist from './pages/Wishlist';
 import AddressBook from './pages/AddressBook';
+import Admin from './pages/Admin';
+import Staff from './pages/Staff';
 
 export default function App() {
   return (
@@ -34,6 +36,8 @@ export default function App() {
           <Route path="/order-history" element={<OrderHistory />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/address-book" element={<AddressBook />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/staff" element={<Staff />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

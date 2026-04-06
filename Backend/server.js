@@ -5,16 +5,18 @@ const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 // Import routes
-const authRoutes = require('./routes/authRoutes');
-const productRoutes = require('./routes/productRoutes');
-const categoryBrandRoutes = require('./routes/categoryBrandRoutes');
-const cartRoutes = require('./routes/cartRoutes');
-const orderRoutes = require('./routes/orderRoutes');
-const addressRoutes = require('./routes/addressRoutes');
-const reviewWishlistRoutes = require('./routes/reviewWishlistRoutes');
+const authRoutes = require('./src/routes/authRoutes');
+const productRoutes = require('./src/routes/productRoutes');
+const categoryBrandRoutes = require('./src/routes/categoryBrandRoutes');
+const cartRoutes = require('./src/routes/cartRoutes');
+const orderRoutes = require('./src/routes/orderRoutes');
+const addressRoutes = require('./src/routes/addressRoutes');
+const reviewWishlistRoutes = require('./src/routes/reviewWishlistRoutes');
+const adminRoutes = require('./src/routes/adminRoutes');
+const emailRoutes = require('./src/routes/emailRoutes');
 
 // Import middleware
-const { errorHandler, notFound } = require('./middleware/errorHandler');
+const { errorHandler, notFound } = require('./src/middleware/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,14 +24,26 @@ const PORT = process.env.PORT || 5000;
 // ============================================
 // Middleware
 // ============================================
+const allowedOrigins = [
+  process.env.CLIENT_URL || 'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:5174',
+  'http://localhost:4173',
+];
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(morgan('dev'));
+app.use('/uploads', express.static('public'));
 
 // ============================================
 // Routes
@@ -60,6 +74,8 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api', reviewWishlistRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/email', emailRoutes);
 
 // ============================================
 // Error Handling

@@ -12,7 +12,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   register: (data: { full_name: string; email: string; password: string; phone?: string }) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
@@ -43,13 +43,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     const res = await api.post('/auth/login', { email, password });
     if (res.success && res.data) {
       const { token, ...userData } = res.data;
       localStorage.setItem('token', token);
       setUser(userData);
+      return userData;
     }
+    throw new Error('Đăng nhập thất bại');
   };
 
   const register = async (data: { full_name: string; email: string; password: string; phone?: string }) => {

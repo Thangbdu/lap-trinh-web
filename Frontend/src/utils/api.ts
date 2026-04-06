@@ -1,4 +1,20 @@
 const API_BASE = 'http://localhost:5000/api';
+export const BACKEND_URL = 'http://localhost:5000';
+
+/**
+ * Chuyển đổi đường dẫn ảnh tương đối thành URL đầy đủ từ backend
+ * VD: '/uploads/images/products/s24utral.webp' -> 'http://localhost:5000/uploads/images/products/s24utral.webp'
+ */
+export function getImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  // Encode từng segment của path để xử lý tên file có dấu cách, ký tự đặc biệt
+  const encodedPath = url
+    .split('/')
+    .map(segment => encodeURIComponent(segment))
+    .join('/');
+  return `${BACKEND_URL}${encodedPath}`;
+}
 
 interface ApiResponse<T = any> {
   success: boolean;
