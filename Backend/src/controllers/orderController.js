@@ -175,24 +175,39 @@ exports.getAllOrders = async (req, res) => {
     const { status, page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
 
-    let query = `
+    let baseQuery = `
       SELECT o.*, u.full_name, u.email, ua.full_address
       FROM orders o
       JOIN users u ON o.user_id = u.user_id
       LEFT JOIN user_addresses ua ON o.address_id = ua.address_id
     `;
+    let countQuery = `SELECT COUNT(*) AS total FROM orders o`;
     const params = [];
+    const countParams = [];
 
     if (status) {
-      query += ' WHERE o.status = ?';
+      baseQuery += ' WHERE o.status = ?';
+      countQuery += ' WHERE o.status = ?';
       params.push(status);
+      countParams.push(status);
     }
 
-    query += ' ORDER BY o.order_date DESC LIMIT ? OFFSET ?';
+    const [[{ total }]] = await pool.query(countQuery, countParams);
+
+    baseQuery += ' ORDER BY o.order_date DESC LIMIT ? OFFSET ?';
     params.push(Number(limit), Number(offset));
 
-    const [orders] = await pool.query(query, params);
-    res.json({ success: true, data: orders });
+    const [orders] = await pool.query(baseQuery, params);
+    res.json({
+      success: true,
+      data: orders,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        totalPages: Math.ceil(total / Number(limit)),
+      },
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
