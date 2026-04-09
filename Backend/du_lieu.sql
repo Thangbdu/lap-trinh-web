@@ -177,7 +177,7 @@ CREATE TABLE `user_addresses` (
 DROP TABLE IF EXISTS `orders`;
 CREATE TABLE `orders` (
     `order_id` INT NOT NULL AUTO_INCREMENT,
-    `user_id` INT NOT NULL,
+    `user_id` INT DEFAULT NULL,
     `address_id` INT DEFAULT NULL,
     `promo_id` INT DEFAULT NULL,
     `total_amount` DECIMAL(18,2) NOT NULL,
@@ -190,8 +190,8 @@ CREATE TABLE `orders` (
     KEY `idx_orders_user` (`user_id`),
     KEY `idx_orders_address` (`address_id`),
     KEY `idx_orders_promo` (`promo_id`),
-    CONSTRAINT `fk_user_order` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
-    CONSTRAINT `fk_order_address` FOREIGN KEY (`address_id`) REFERENCES `user_addresses` (`address_id`),
+    CONSTRAINT `fk_user_order` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL,
+    CONSTRAINT `fk_order_address` FOREIGN KEY (`address_id`) REFERENCES `user_addresses` (`address_id`) ON DELETE SET NULL,
     CONSTRAINT `fk_order_promo` FOREIGN KEY (`promo_id`) REFERENCES `promotions` (`promo_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

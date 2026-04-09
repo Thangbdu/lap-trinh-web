@@ -13,22 +13,33 @@ exports.getDashboardStats = async (req, res) => {
     const [[{ totalProducts }]] = await pool.query(
       "SELECT COUNT(*) AS totalProducts FROM products WHERE is_active = 1"
     );
+    // Đếm tất cả user không phải admin (kể cả staff, customer...)
     const [[{ totalUsers }]] = await pool.query(
-      "SELECT COUNT(*) AS totalUsers FROM users WHERE role = 'customer'"
+      "SELECT COUNT(*) AS totalUsers FROM users WHERE role != 'admin'"
     );
 
     // Đơn hàng theo trạng thái
     const [ordersByStatus] = await pool.query(
-      "SELECT status, COUNT(*) AS count FROM orders GROUP BY status"
+      "SELECT status, COUNT(*) AS count FROM orders GROUP BY status ORDER BY count DESC"
     );
 
-    // Doanh thu 7 ngày gần nhất
+    // Doanh thu 7 ngày gần nhất - luôn trả đủ 7 ngày kể cả ngày 0đ
     const [revenueByDay] = await pool.query(`
-      SELECT DATE(order_date) AS date, SUM(final_amount) AS revenue
-      FROM orders
-      WHERE order_date >= DATE_SUB(NOW(), INTERVAL 7 DAY) AND status != 'Đã hủy'
-      GROUP BY DATE(order_date)
-      ORDER BY date ASC
+      SELECT
+        dates.date,
+        COALESCE(SUM(o.final_amount), 0) AS revenue
+      FROM (
+        SELECT DATE(DATE_SUB(CURDATE(), INTERVAL n DAY)) AS date
+        FROM (
+          SELECT 6 AS n UNION SELECT 5 UNION SELECT 4
+          UNION SELECT 3 UNION SELECT 2 UNION SELECT 1 UNION SELECT 0
+        ) nums
+      ) dates
+      LEFT JOIN orders o
+        ON DATE(o.order_date) = dates.date
+        AND o.status != 'Đã hủy'
+      GROUP BY dates.date
+      ORDER BY dates.date ASC
     `);
 
     // Top 5 sản phẩm bán chạy
@@ -148,20 +159,42 @@ exports.resetUserPassword = async (req, res) => {
 
 // [Admin] Xóa tài khoản người dùng
 exports.deleteUser = async (req, res) => {
+  const connection = await pool.getConnection();
   try {
+    await connection.beginTransaction();
     const { id } = req.params;
-    // Không cho xóa chính mình
+
+    // 1. Không cho xóa chính mình
     if (Number(id) === req.user.user_id) {
       return res.status(400).json({ success: false, message: 'Không thể xóa tài khoản của chính mình.' });
     }
-    // Kiểm tra user tồn tại
+
+    // 2. Kiểm tra user tồn tại
     const [users] = await pool.query('SELECT user_id, role FROM users WHERE user_id = ?', [id]);
     if (users.length === 0) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
     }
-    await pool.query('DELETE FROM users WHERE user_id = ?', [id]);
-    res.json({ success: true, message: 'Xóa tài khoản thành công!' });
+
+    // 3. Dọn dẹp dữ liệu liên quan để tránh lỗi khóa ngoại
+    // Xóa giỏ hàng
+    await connection.query('DELETE FROM cartitems WHERE cart_id IN (SELECT cart_id FROM cart WHERE user_id = ?)', [id]);
+    await connection.query('DELETE FROM cart WHERE user_id = ?', [id]);
+    
+    // Xóa địa chỉ, yêu thích, thông báo (nếu có)
+    await connection.query('DELETE FROM user_addresses WHERE user_id = ?', [id]);
+    await connection.query('DELETE FROM wishlist WHERE user_id = ?', [id]);
+    // Nếu có đơn hàng, gán user_id = NULL để giữ lại lịch sử đơn hàng cho thống kê doanh thu
+    await connection.query('UPDATE orders SET user_id = NULL WHERE user_id = ?', [id]);
+
+    // 4. Xóa user
+    await connection.query('DELETE FROM users WHERE user_id = ?', [id]);
+
+    await connection.commit();
+    res.json({ success: true, message: 'Xóa tài khoản và dữ liệu liên quan thành công!' });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    await connection.rollback();
+    res.status(500).json({ success: false, message: 'Lỗi khi xóa: ' + error.message });
+  } finally {
+    connection.release();
   }
 };

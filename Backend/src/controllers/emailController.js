@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // ── Template email ────────────────────────────────────────────────────────────
-const otpEmailTemplate = (otp, name) => `
+const otpEmailTemplate = (otp, name, purpose = 'reset') => `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -16,16 +16,17 @@ const otpEmailTemplate = (otp, name) => `
       <table width="600" cellpadding="0" cellspacing="0" style="background:#1e293b;border-radius:16px;overflow:hidden;border:1px solid #334155;max-width:600px;width:100%;">
         <!-- Header -->
         <tr><td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);padding:32px 40px;text-align:center;">
-          <div style="font-size:32px;margin-bottom:8px;">📱</div>
+          <div style="font-size:32px;margin-bottom:8px;">${purpose === 'register' ? '🎉' : '🔐'}</div>
           <h1 style="margin:0;color:#fff;font-size:24px;font-weight:800;letter-spacing:-0.5px;">MobileStore</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,0.8);font-size:14px;">Xác thực tài khoản của bạn</p>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.8);font-size:14px;">${purpose === 'register' ? 'Xác thực tạo tài khoản mới' : 'Xác thực tài khoản của bạn'}</p>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:40px;">
           <p style="margin:0 0 16px;color:#94a3b8;font-size:15px;">Xin chào <strong style="color:#e2e8f0;">${name}</strong>,</p>
           <p style="margin:0 0 28px;color:#94a3b8;font-size:15px;line-height:1.6;">
-            Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. 
-            Sử dụng mã OTP bên dưới để tiếp tục:
+            ${purpose === 'register'
+              ? 'Cảm ơn bạn đã đăng ký tài khoản tại MobileStore! Sử dụng mã OTP bên dưới để xác thực và hoàn tất đăng ký:'
+              : 'Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Sử dụng mã OTP bên dưới để tiếp tục:'}
           </p>
           <!-- OTP Box -->
           <div style="background:#0f172a;border:2px solid #6366f1;border-radius:12px;padding:24px;text-align:center;margin:0 0 28px;">
@@ -93,6 +94,141 @@ const welcomeEmailTemplate = (name) => `
 </body>
 </html>
 `;
+
+// ── [POST] /auth/send-register-otp ───────────────────────────────────────────
+exports.sendRegisterOtp = async (req, res) => {
+  try {
+    const { full_name, email, password, phone } = req.body;
+    if (!full_name || !email || !password) {
+      return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin.' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu phải có ít nhất 6 ký tự.' });
+    }
+
+    // Kiểm tra email đã tồn tại chưa
+    const [existing] = await pool.query('SELECT user_id FROM users WHERE email = ?', [email]);
+    if (existing.length > 0) {
+      return res.status(400).json({ success: false, message: 'Email này đã được sử dụng.' });
+    }
+
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 phút
+
+    // Lưu OTP + thông tin đăng ký tạm thời vào DB
+    // Dùng bảng register_otps (tạo nếu chưa có)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS register_otps (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(191) NOT NULL,
+        full_name VARCHAR(255) NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        phone VARCHAR(20),
+        otp VARCHAR(6) NOT NULL,
+        expires_at DATETIME NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Xóa OTP cũ (nếu có)
+    await pool.query('DELETE FROM register_otps WHERE email = ?', [email]);
+
+    // Hash password trước khi lưu
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(password, salt);
+
+    await pool.query(
+      'INSERT INTO register_otps (email, full_name, password_hash, phone, otp, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [email, full_name, password_hash, phone || null, otp, expiresAt]
+    );
+
+    // Gửi email OTP
+    await transporter.sendMail({
+      from: `"MobileStore" <${process.env.SMTP_USER}>`,
+      to: email,
+      subject: `[MobileStore] Mã OTP xác thực đăng ký: ${otp}`,
+      html: otpEmailTemplate(otp, full_name, 'register'),
+    });
+
+    res.json({ success: true, message: 'Mã OTP đã được gửi đến email của bạn.' });
+  } catch (error) {
+    console.error('Send register OTP error:', error);
+    res.status(500).json({ success: false, message: 'Lỗi gửi email. Vui lòng thử lại.' });
+  }
+};
+
+// ── [POST] /auth/verify-register-otp ──────────────────────────────────────────
+exports.verifyRegisterOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin.' });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT * FROM register_otps WHERE email = ? AND otp = ? AND expires_at > NOW()',
+      [email, otp]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Mã OTP không hợp lệ hoặc đã hết hạn.' });
+    }
+
+    const pending = rows[0];
+
+    // Kiểm tra lại email chưa bị đăng ký trong lúc chờ
+    const [existing] = await pool.query('SELECT user_id FROM users WHERE email = ?', [email]);
+    if (existing.length > 0) {
+      await pool.query('DELETE FROM register_otps WHERE email = ?', [email]);
+      return res.status(400).json({ success: false, message: 'Email này đã được sử dụng.' });
+    }
+
+    // Tạo user thật sự
+    const [result] = await pool.query(
+      'INSERT INTO users (full_name, email, password_hash, phone) VALUES (?, ?, ?, ?)',
+      [pending.full_name, pending.email, pending.password_hash, pending.phone]
+    );
+    // Tạo cart cho user mới
+    await pool.query('INSERT INTO cart (user_id) VALUES (?)', [result.insertId]);
+    // Xóa OTP đã dùng
+    await pool.query('DELETE FROM register_otps WHERE email = ?', [email]);
+
+    // Tạo JWT token để tự động đăng nhập
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { user_id: result.insertId, email: pending.email, role: 'customer' },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    // Gửi email chào mừng bất đồng bộ
+    exports.sendWelcomeEmail(pending.email, pending.full_name).catch(() => {});
+
+    res.status(201).json({
+      success: true,
+      message: 'Đăng ký thành công! Chào mừng bạn đến MobileStore 🎉',
+      data: {
+        user_id: result.insertId,
+        full_name: pending.full_name,
+        email: pending.email,
+        phone: pending.phone,
+        role: 'customer',
+        token,
+      },
+    });
+  } catch (error) {
+    console.error('Verify register OTP error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 // ── [POST] /auth/forgot-password ─────────────────────────────────────────────
 exports.forgotPassword = async (req, res) => {

@@ -247,8 +247,11 @@ export default function Admin() {
   const loadDashboard = useCallback(async () => {
     setLoadingData(true);
     try {
-      const r = await api.get<DashboardStats>('/admin/dashboard');
-      if (r.data) setStats(r.data);
+      const r = await api.get<any>('/admin/dashboard');
+      // Backend trả về { success, data: { totalRevenue, ... } }
+      if (r.data) setStats(r.data as DashboardStats);
+    } catch (err) {
+      console.error('Dashboard load error:', err);
     } finally { setLoadingData(false); }
   }, []);
 
@@ -257,7 +260,13 @@ export default function Admin() {
     setLoadingData(true);
     try {
       const r = await api.get<any>(`/products?search=${prodSearch}&page=${prodPage}&limit=10`);
-      if (r.data) { setProducts(r.data); setProdTotal((r as any).pagination?.total ?? 0); }
+      // r.data = mảng sản phẩm, r.pagination = info phân trang
+      if (r.data) {
+        setProducts(Array.isArray(r.data) ? r.data : []);
+        setProdTotal((r as any).pagination?.total ?? (Array.isArray(r.data) ? r.data.length : 0));
+      }
+    } catch (err) {
+      console.error('Products load error:', err);
     } finally { setLoadingData(false); }
   }, [prodSearch, prodPage]);
 
@@ -266,7 +275,13 @@ export default function Admin() {
     setLoadingData(true);
     try {
       const r = await api.get<any>(`/orders/all?${orderStatus ? `status=${orderStatus}&` : ''}page=${orderPage}&limit=12`);
-      if (r.data) { setOrders(r.data); setOrderTotal((r as any).pagination?.total ?? r.data?.length ?? 0); }
+      // r.data = mảng đơn hàng, r.pagination = info phân trang
+      if (r.data) {
+        setOrders(Array.isArray(r.data) ? r.data : []);
+        setOrderTotal((r as any).pagination?.total ?? (Array.isArray(r.data) ? r.data.length : 0));
+      }
+    } catch (err) {
+      console.error('Orders load error:', err);
     } finally { setLoadingData(false); }
   }, [orderStatus, orderPage]);
 
@@ -275,7 +290,13 @@ export default function Admin() {
     setLoadingData(true);
     try {
       const r = await api.get<any>(`/admin/users?search=${userSearch}&page=${userPage}&limit=12`);
-      if (r.data) { setUsers(r.data); setUserTotal((r as any).pagination?.total ?? 0); }
+      // r.data = mảng users, r.pagination = info phân trang
+      if (r.data) {
+        setUsers(Array.isArray(r.data) ? r.data : []);
+        setUserTotal((r as any).pagination?.total ?? (Array.isArray(r.data) ? r.data.length : 0));
+      }
+    } catch (err) {
+      console.error('Users load error:', err);
     } finally { setLoadingData(false); }
   }, [userSearch, userPage]);
 
@@ -477,10 +498,10 @@ export default function Admin() {
                 {/* Stat cards */}
                 <div style={styles.statsGrid}>
                   {[
-                    { label: 'Doanh thu', val: fmt(stats.totalRevenue), icon: '💰', color: '#10b981' },
-                    { label: 'Đơn hàng', val: stats.totalOrders, icon: '🛒', color: '#3b82f6' },
-                    { label: 'Sản phẩm', val: stats.totalProducts, icon: '📦', color: '#8b5cf6' },
-                    { label: 'Khách hàng', val: stats.totalUsers, icon: '👥', color: '#f59e0b' },
+                    { label: 'Doanh thu', val: fmt(Number(stats.totalRevenue) || 0), icon: '💰', color: '#10b981' },
+                    { label: 'Đơn hàng', val: Number(stats.totalOrders) || 0, icon: '🛒', color: '#3b82f6' },
+                    { label: 'Sản phẩm', val: Number(stats.totalProducts) || 0, icon: '📦', color: '#8b5cf6' },
+                    { label: 'Khách hàng', val: Number(stats.totalUsers) || 0, icon: '👥', color: '#f59e0b' },
                   ].map(s => (
                     <div key={s.label} style={{ ...styles.statCard, borderTop: `4px solid ${s.color}` }}>
                       <div style={{ fontSize: 32 }}>{s.icon}</div>
@@ -497,67 +518,83 @@ export default function Admin() {
                   <div style={styles.dashCard}>
                     <h3 style={styles.cardTitle}>Đơn hàng theo trạng thái</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {stats.ordersByStatus.map(o => {
-                        const pct = stats.totalOrders > 0 ? Math.round((o.count / stats.totalOrders) * 100) : 0;
-                        return (
-                          <div key={o.status}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#cbd5e1', fontSize: 13 }}>
-                              <span>{o.status}</span><span>{o.count} ({pct}%)</span>
+                      {(stats.ordersByStatus || []).length === 0
+                        ? <div style={{ color: '#64748b', textAlign: 'center', padding: '20px 0', fontSize: 14 }}>Chưa có đơn hàng nào</div>
+                        : (stats.ordersByStatus || []).map(o => {
+                          const pct = Number(stats.totalOrders) > 0 ? Math.round((Number(o.count) / Number(stats.totalOrders)) * 100) : 0;
+                          return (
+                            <div key={o.status}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#cbd5e1', fontSize: 13 }}>
+                                <span>{o.status}</span><span>{o.count} ({pct}%)</span>
+                              </div>
+                              <div style={styles.progressBg}>
+                                <div style={{ ...styles.progressFill, width: `${pct}%`, background: statusColor[o.status] ?? '#6366f1' }} />
+                              </div>
                             </div>
-                            <div style={styles.progressBg}>
-                              <div style={{ ...styles.progressFill, width: `${pct}%`, background: statusColor[o.status] ?? '#6366f1' }} />
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })
+                      }
                     </div>
                   </div>
 
                   {/* Top products */}
                   <div style={styles.dashCard}>
                     <h3 style={styles.cardTitle}>Top sản phẩm bán chạy</h3>
-                    <table style={styles.table}>
-                      <thead>
-                        <tr>
-                          <th style={styles.th}>#</th>
-                          <th style={styles.th}>Sản phẩm</th>
-                          <th style={styles.th}>Đã bán</th>
-                          <th style={styles.th}>Doanh thu</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {stats.topProducts.map((p, i) => (
-                          <tr key={i} style={styles.tr}>
-                            <td style={styles.td}><span style={styles.rank}>{i + 1}</span></td>
-                            <td style={{ ...styles.td, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.product_name}</td>
-                            <td style={styles.td}>{p.total_sold}</td>
-                            <td style={styles.td}>{fmt(p.revenue)}</td>
+                    {(!stats.topProducts || stats.topProducts.length === 0) ? (
+                      <div style={{ color: '#64748b', textAlign: 'center', padding: '20px 0', fontSize: 14 }}>Chưa có sản phẩm nào được bán</div>
+                    ) : (
+                      <table style={styles.table}>
+                        <thead>
+                          <tr>
+                            <th style={styles.th}>#</th>
+                            <th style={styles.th}>Sản phẩm</th>
+                            <th style={styles.th}>Đã bán</th>
+                            <th style={styles.th}>Doanh thu</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {stats.topProducts.map((p, i) => (
+                            <tr key={i} style={styles.tr}>
+                              <td style={styles.td}><span style={styles.rank}>{i + 1}</span></td>
+                              <td style={{ ...styles.td, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.product_name}</td>
+                              <td style={styles.td}>{p.total_sold}</td>
+                              <td style={styles.td}>{fmt(Number(p.revenue))}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                 </div>
 
                 {/* Revenue by day */}
-                {stats.revenueByDay.length > 0 && (
-                  <div style={{ ...styles.dashCard, marginTop: 20 }}>
-                    <h3 style={styles.cardTitle}>Doanh thu 7 ngày gần nhất</h3>
+                <div style={{ ...styles.dashCard, marginTop: 20 }}>
+                  <h3 style={styles.cardTitle}>Doanh thu 7 ngày gần nhất</h3>
+                  {(!stats.revenueByDay || stats.revenueByDay.length === 0) ? (
+                    <div style={{ color: '#64748b', textAlign: 'center', padding: '20px 0', fontSize: 14 }}>Chưa có giao dịch trong 7 ngày qua</div>
+                  ) : (
                     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120, padding: '8px 0' }}>
                       {stats.revenueByDay.map((d, i) => {
-                        const maxRev = Math.max(...stats.revenueByDay.map(x => x.revenue));
-                        const h = maxRev > 0 ? Math.round((d.revenue / maxRev) * 100) : 0;
+                        const maxRev = Math.max(...stats.revenueByDay.map(x => Number(x.revenue)));
+                        const h = maxRev > 0 ? Math.round((Number(d.revenue) / maxRev) * 100) : 0;
                         return (
                           <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                            <div title={fmt(d.revenue)} style={{ width: '100%', height: `${h}%`, minHeight: 4, background: 'linear-gradient(180deg,#6366f1,#8b5cf6)', borderRadius: '4px 4px 0 0', transition: 'height 0.4s' }} />
+                            <div title={fmt(Number(d.revenue))} style={{ width: '100%', height: `${h}%`, minHeight: 4, background: 'linear-gradient(180deg,#6366f1,#8b5cf6)', borderRadius: '4px 4px 0 0', transition: 'height 0.4s' }} />
                             <span style={{ fontSize: 10, color: '#94a3b8' }}>{d.date.slice(5)}</span>
                           </div>
                         );
                       })}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </>
+            )}
+            {!loadingData && !stats && (
+              <div style={{ color: '#64748b', textAlign: 'center', padding: 60, fontSize: 16 }}>
+                ⚠️ Không thể tải dữ liệu dashboard. Vui lòng thử lại.
+                <br/><br/>
+                <button onClick={loadDashboard} style={styles.btnPrimary}>🔄 Thử lại</button>
+              </div>
             )}
           </>
         )}
@@ -653,6 +690,8 @@ export default function Admin() {
                 <tbody>
                   {loadingData ? (
                     <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Đang tải...</td></tr>
+                  ) : orders.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>📭 Chưa có đơn hàng nào</td></tr>
                   ) : orders.map(o => (
                     <tr key={o.order_id} style={styles.tr}>
                       <td style={styles.td}><span style={{ fontFamily: 'monospace', color: '#818cf8' }}>#{o.order_id}</span></td>

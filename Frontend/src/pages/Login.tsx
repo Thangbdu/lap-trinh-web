@@ -10,39 +10,25 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login } = useAuth() as any;
 
-  // Lấy returnUrl từ query string (VD: /login?returnUrl=/cart)
   const params = new URLSearchParams(location.search);
   const returnUrl = params.get('returnUrl') || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!email || !password) {
-      setError('Vui lòng nhập đầy đủ email và mật khẩu.');
-      return;
-    }
-
+    if (!email || !password) { setError('Vui lòng nhập đầy đủ email và mật khẩu.'); return; }
     setLoading(true);
     try {
       const loggedUser = await login(email, password);
-      // Sau khi đăng nhập, redirect về returnUrl hoặc trang phù hợp
-      if (returnUrl && returnUrl !== '/') {
-        navigate(returnUrl);
-      } else if (loggedUser?.role === 'admin') {
-        navigate('/admin');
-      } else if (loggedUser?.role === 'staff') {
-        navigate('/staff');
-      } else {
-        navigate('/');
-      }
+      if (returnUrl && returnUrl !== '/') navigate(returnUrl);
+      else if (loggedUser?.role === 'admin') navigate('/admin');
+      else if (loggedUser?.role === 'staff') navigate('/staff');
+      else navigate('/');
     } catch (err: any) {
       setError(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
@@ -61,7 +47,6 @@ export default function Login() {
               <nav className="flex items-center gap-8">
                 <a className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary text-sm font-medium transition-colors" href="#">Sản phẩm</a>
                 <a className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary text-sm font-medium transition-colors" href="#">Khuyến mãi</a>
-                <a className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary text-sm font-medium transition-colors" href="#">Tin tức</a>
                 <a className="text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary text-sm font-medium transition-colors" href="#">Hỗ trợ</a>
               </nav>
             </div>
@@ -79,16 +64,17 @@ export default function Login() {
                 </div>
               </div>
               <div className="p-8 lg:p-10">
-                {/* Header Section */}
-                <div className="mb-8 text-center">
+                <div className="mb-6 text-center">
                   <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Đăng nhập</h1>
                   <p className="text-slate-500 dark:text-slate-400">Chào mừng bạn quay trở lại với MobileStore</p>
                 </div>
 
+
+
                 {/* Error message */}
                 {error && (
-                  <div className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2">
-                    <span className="material-symbols-outlined text-red-500 text-lg">error</span>
+                  <div className="mb-5 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-2">
+                    <span className="material-symbols-outlined text-red-500 text-lg mt-0.5">error</span>
                     <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
                   </div>
                 )}
@@ -122,11 +108,7 @@ export default function Login() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                       />
-                      <button
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
+                      <button className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors" type="button" onClick={() => setShowPassword(!showPassword)}>
                         <span className="material-symbols-outlined text-xl">{showPassword ? 'visibility_off' : 'visibility'}</span>
                       </button>
                     </div>
@@ -154,7 +136,7 @@ export default function Login() {
                 </form>
 
                 {/* Footer Link */}
-                <div className="mt-10 text-center">
+                <div className="mt-8 text-center">
                   <p className="text-slate-500 dark:text-slate-400 text-sm">
                     Chưa có tài khoản?
                     <Link className="text-primary font-bold hover:underline ml-1" to="/register">Đăng ký ngay</Link>

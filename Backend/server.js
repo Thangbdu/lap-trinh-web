@@ -14,6 +14,7 @@ const addressRoutes = require('./src/routes/addressRoutes');
 const reviewWishlistRoutes = require('./src/routes/reviewWishlistRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const emailRoutes = require('./src/routes/emailRoutes');
+const oauthRoutes = require('./src/routes/oauthRoutes');
 
 // Import middleware
 const { errorHandler, notFound } = require('./src/middleware/errorHandler');
@@ -76,6 +77,7 @@ app.use('/api/addresses', addressRoutes);
 app.use('/api', reviewWishlistRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/oauth', oauthRoutes);
 
 // ============================================
 // Error Handling
