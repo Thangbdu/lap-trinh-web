@@ -39,9 +39,11 @@ export default function Checkout() {
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   // Form fields
-  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'Chuyển khoản' | 'Momo' | 'VNPay' | 'Thẻ Tín Dụng'>('COD');
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'Chuyển khoản' | 'Momo' | 'ZaloPay' | 'Thẻ Tín Dụng'>('COD');
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   const [promoCode, setPromoCode] = useState('');
+  const [discountInfo, setDiscountInfo] = useState<{ promo_code: string; discount_amount: number } | null>(null);
+  const [checkingPromo, setCheckingPromo] = useState(false);
 
   const formatPrice = (p: number) => new Intl.NumberFormat('vi-VN').format(p) + '₫';
 
@@ -67,20 +69,51 @@ export default function Checkout() {
   const items = cart?.items || [];
   const subtotal = cart?.total || 0;
 
+  // Kiểm tra mã giảm giá
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim() || checkingPromo) return;
+    setCheckingPromo(true);
+    try {
+      const res = await api.post('/promotions/check', { 
+        code: promoCode.trim(), 
+        totalAmount: subtotal 
+      });
+      if (res.success) {
+        setDiscountInfo(res.data);
+        setToast({ msg: `Đã áp dụng mã ${res.data.promo_code}!`, type: 'success' });
+      }
+    } catch (err: any) {
+      setToast({ msg: err.message || 'Mã không hợp lệ!', type: 'error' });
+      setDiscountInfo(null);
+    } finally {
+      setCheckingPromo(false);
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  // Gọi API đặt hàng và điều hướng
   const handlePlaceOrder = async () => {
-    if (items.length === 0) return;
+    if (items.length === 0 || placing) return;
     setPlacing(true);
     try {
-      const body: any = {
-        payment_method: paymentMethod,
-      };
+      const body: any = { payment_method: paymentMethod };
       if (selectedAddressId) body.address_id = selectedAddressId;
       if (promoCode.trim()) body.promo_code = promoCode.trim();
 
       const res = await api.post('/orders', body);
       if (res.success) {
-        setToast({ msg: 'Đặt hàng thành công! 🎉', type: 'success' });
-        setTimeout(() => navigate('/order-success'), 1500);
+        setToast({ msg: 'Đang xử lý đơn hàng...', type: 'success' });
+        const orderId = res.data.order_id;
+        
+        // Điều hướng dựa trên phương thức thanh toán
+        setTimeout(() => {
+          if (paymentMethod === 'COD' || paymentMethod === 'Thẻ Tín Dụng') {
+            navigate('/order-success', { state: { orderId, items } });
+          } else {
+            // MoMo, ZaloPay, Chuyển khoản -> Qua trang Gateway
+            navigate(`/payment-gateway/${orderId}?method=${paymentMethod}`);
+          }
+        }, 1000);
       }
     } catch (err: any) {
       setToast({ msg: err.message || 'Đặt hàng thất bại!', type: 'error' });
@@ -230,9 +263,9 @@ export default function Checkout() {
                 <div className="space-y-3">
                   {([
                     { value: 'COD', label: 'Thanh toán khi nhận hàng (COD)', sub: 'Thanh toán tiền mặt cho shipper', icon: 'payments' },
-                    { value: 'Momo', label: 'Ví MoMo', sub: 'Thanh toán qua ứng dụng MoMo', icon: 'phone_iphone' },
-                    { value: 'VNPay', label: 'VNPay', sub: 'Cổng thanh toán VNPay', icon: 'qr_code_scanner' },
-                    { value: 'Chuyển khoản', label: 'Chuyển khoản ngân hàng', sub: 'Quét mã QR qua ứng dụng ngân hàng', icon: 'account_balance' },
+                    { value: 'Momo', label: 'Ví MoMo', sub: 'Quét QR thanh toán qua MoMo', icon: 'phone_iphone' },
+                    { value: 'ZaloPay', label: 'ZaloPay', sub: 'Quét QR thanh toán qua ZaloPay', icon: 'qr_code_scanner' },
+                    { value: 'Chuyển khoản', label: 'Chuyển khoản ngân hàng', sub: 'Quét QR chuyển tiền qua ngân hàng', icon: 'account_balance' },
                     { value: 'Thẻ Tín Dụng', label: 'Thẻ tín dụng / Ghi nợ', sub: 'Visa, Mastercard, JCB, Amex', icon: 'credit_card' },
                   ] as const).map((opt) => (
                     <label
@@ -271,10 +304,33 @@ export default function Checkout() {
                     value={promoCode}
                     onChange={(e) => setPromoCode(e.target.value)}
                   />
-                  <button className="bg-primary/10 text-primary px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-primary/20 transition-all">
-                    Áp dụng
+                  <button 
+                    onClick={handleApplyPromo}
+                    disabled={checkingPromo || !promoCode.trim()}
+                    className="bg-primary/10 text-primary px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-primary/20 transition-all disabled:opacity-50"
+                  >
+                    {checkingPromo ? '...' : 'Áp dụng'}
                   </button>
                 </div>
+                {discountInfo && (
+                  <div className="mt-2 flex items-center justify-between bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg border border-green-100 dark:border-green-800">
+                    <p className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">check_circle</span>
+                      Mã <b>{discountInfo.promo_code}</b> đã áp dụng.
+                    </p>
+                    <button 
+                      onClick={() => {
+                        setDiscountInfo(null);
+                        setPromoCode('');
+                        setToast({ msg: 'Đã gỡ mã giảm giá.', type: 'success' });
+                        setTimeout(() => setToast(null), 3000);
+                      }}
+                      className="text-xs text-red-500 hover:underline font-bold"
+                    >
+                      Gỡ bỏ
+                    </button>
+                  </div>
+                )}
               </section>
             </div>
 
@@ -318,12 +374,12 @@ export default function Checkout() {
                       <span className="font-medium">{formatPrice(subtotal)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Phí vận chuyển</span>
-                      <span className="text-green-500 font-medium">Miễn phí</span>
+                      <span className="text-slate-500">Giảm giá</span>
+                      <span className="text-red-500 font-medium">-{formatPrice(discountInfo?.discount_amount || 0)}</span>
                     </div>
                     <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between">
                       <span className="font-bold text-lg">Tổng cộng</span>
-                      <span className="font-bold text-xl text-primary">{formatPrice(subtotal)}</span>
+                      <span className="font-bold text-xl text-primary">{formatPrice(subtotal - (discountInfo?.discount_amount || 0))}</span>
                     </div>
                   </div>
 
@@ -335,16 +391,13 @@ export default function Checkout() {
                   >
                     {placing ? (
                       <>
-                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                        </svg>
-                        Đang đặt hàng...
+                        <div className="size-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ĐANG XỬ LÝ...
                       </>
                     ) : (
                       <>
                         <span className="material-symbols-outlined">shopping_bag</span>
-                        ĐẶT HÀNG NGAY
+                        {paymentMethod === 'COD' ? 'ĐẶT HÀNG NGAY' : 'TIẾP TỤC THANH TOÁN'}
                       </>
                     )}
                   </button>

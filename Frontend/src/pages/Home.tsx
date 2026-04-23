@@ -30,9 +30,10 @@ interface ProductCardProps {
   addToCart: (id: number) => Promise<void> | void;
   formatPrice: (n: number) => string;
   onQuickView: (id: number) => void;
+  handleBuyNow: (id: number) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ p, addingId, addToCart, formatPrice, onQuickView }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ p, addingId, addToCart, formatPrice, onQuickView, handleBuyNow }) => {
   return (
     <div className="group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative">
       {/* Image area — click opens quick view */}
@@ -85,18 +86,28 @@ const ProductCard: React.FC<ProductCardProps> = ({ p, addingId, addToCart, forma
             <span className="text-slate-400 line-through text-xs">{formatPrice(p.old_price)}</span>
           )}
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); addToCart(p.product_id); }}
-          disabled={addingId === p.product_id || p.stock_quantity === 0}
-          className="w-full mt-1 bg-primary/5 group-hover:bg-primary group-hover:text-white text-primary py-2 rounded-xl font-bold text-xs transition-all duration-200 flex items-center justify-center gap-1.5 disabled:opacity-50"
-        >
-          {addingId === p.product_id
-            ? 'Đang thêm...'
-            : p.stock_quantity === 0
-              ? 'Hết hàng'
-              : <><span className="material-symbols-outlined text-sm">add_shopping_cart</span> Thêm vào giỏ</>
-          }
-        </button>
+        
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); addToCart(p.product_id); }}
+            disabled={addingId === p.product_id || p.stock_quantity === 0}
+            className="bg-primary/5 hover:bg-primary hover:text-white text-primary py-2.5 rounded-xl font-bold text-[10px] transition-all duration-200 flex items-center justify-center gap-1.5 disabled:opacity-50"
+            title="Thêm vào giỏ"
+          >
+            {addingId === p.product_id ? (
+               <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            ) : p.stock_quantity === 0 ? 'Hết hàng' : (
+              <><span className="material-symbols-outlined text-base">add_shopping_cart</span></>
+            )}
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleBuyNow(p.product_id); }}
+            disabled={addingId === p.product_id || p.stock_quantity === 0}
+            className="bg-primary text-white py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-50 shadow-sm"
+          >
+            Mua ngay
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -109,6 +120,7 @@ interface QuickViewModalProps {
   addingId: number | null;
   addToCart: (id: number) => Promise<void> | void;
   formatPrice: (n: number) => string;
+  handleBuyNow: (id: number) => void;
 }
 
 function parseSpecs(raw: string | null): Record<string, string> {
@@ -160,7 +172,7 @@ function extractColor(name: string): string | null {
   return null;
 }
 
-const QuickViewModal: React.FC<QuickViewModalProps> = ({ productId, onClose, addingId, addToCart, formatPrice }) => {
+const QuickViewModal: React.FC<QuickViewModalProps> = ({ productId, onClose, addingId, addToCart, formatPrice, handleBuyNow }) => {
   const [detail, setDetail] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeImg, setActiveImg] = useState<string | null>(null);
@@ -378,23 +390,30 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ productId, onClose, add
 
         {/* Footer: action buttons */}
         {detail && (
-          <div className="flex gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0 bg-white dark:bg-slate-900">
+          <div className="flex flex-wrap gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0 bg-white dark:bg-slate-900">
+            <button
+               onClick={() => { handleBuyNow(detail.product_id); }}
+               disabled={addingId === detail.product_id || detail.stock_quantity === 0}
+               className="flex-[2] bg-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 text-sm shadow-lg shadow-primary/20"
+            >
+               <span className="material-symbols-outlined">bolt</span> Mua ngay
+            </button>
             <button
               onClick={() => { addToCart(detail.product_id); }}
               disabled={addingId === detail.product_id || detail.stock_quantity === 0}
-              className="flex-1 bg-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all disabled:opacity-50 text-sm"
+              className="flex-1 bg-primary/10 text-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/20 transition-all disabled:opacity-50 text-sm"
             >
-              {addingId === detail.product_id ? 'Đang thêm...'
-                : detail.stock_quantity === 0 ? 'Hết hàng'
-                : <><span className="material-symbols-outlined">add_shopping_cart</span> Thêm vào giỏ</>
+              {addingId === detail.product_id ? '...'
+                : detail.stock_quantity === 0 ? 'Hết'
+                : <><span className="material-symbols-outlined">add_shopping_cart</span> Giỏ hàng</>
               }
             </button>
             <Link
               to={`/product/${detail.product_id}`}
               onClick={onClose}
-              className="flex-1 border-2 border-primary text-primary py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/5 transition-all text-sm"
+              className="flex-1 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm"
             >
-              <span className="material-symbols-outlined">open_in_new</span> Xem đầy đủ
+              <span className="material-symbols-outlined text-base">open_in_new</span> Chi tiết
             </Link>
           </div>
         )}
@@ -463,7 +482,7 @@ const ADS = [
 ];
 
 export default function Home() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, loading, logout } = useAuth();
   const navigate = useNavigate();
   const [toast, setToast] = useState<string | null>(null);
   const [addingId, setAddingId] = useState<number | null>(null);
@@ -569,6 +588,23 @@ export default function Home() {
       setTimeout(() => setToast(null), 2000);
     } catch (err: any) {
       setToast(err.message || 'Lỗi khi thêm vào giỏ.');
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setAddingId(null);
+    }
+  };
+
+  const handleBuyNow = async (productId: number) => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    setAddingId(productId);
+    try {
+      await api.post('/cart', { product_id: productId, quantity: 1 });
+      navigate('/checkout');
+    } catch (err: any) {
+      setToast(err.message || 'Lỗi khi mua sản phẩm.');
       setTimeout(() => setToast(null), 3000);
     } finally {
       setAddingId(null);
@@ -817,7 +853,17 @@ export default function Home() {
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-                {products.filter(p => p.is_featured).map((p) => <ProductCard key={p.product_id} p={p} addingId={addingId} addToCart={addToCart} formatPrice={formatPrice} onQuickView={handleQuickView} />)}
+                {products.filter(p => p.is_featured).map((p) => (
+                  <ProductCard 
+                    key={p.product_id} 
+                    p={p} 
+                    addingId={addingId} 
+                    addToCart={addToCart} 
+                    handleBuyNow={handleBuyNow}
+                    formatPrice={formatPrice} 
+                    onQuickView={handleQuickView} 
+                  />
+                ))}
               </div>
             )}
           </section>
@@ -858,7 +904,15 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
               {(searchQuery || selectedKey ? products : products.filter(p => !p.is_featured)).map((p) => (
-                <ProductCard key={p.product_id} p={p} addingId={addingId} addToCart={addToCart} formatPrice={formatPrice} onQuickView={handleQuickView} />
+                <ProductCard
+                  key={p.product_id}
+                  p={p}
+                  addingId={addingId}
+                  addToCart={addToCart}
+                  handleBuyNow={handleBuyNow}
+                  formatPrice={formatPrice}
+                  onQuickView={handleQuickView}
+                />
               ))}
             </div>
           )}
@@ -963,6 +1017,7 @@ export default function Home() {
         onClose={handleCloseModal}
         addingId={addingId}
         addToCart={addToCart}
+        handleBuyNow={handleBuyNow}
         formatPrice={formatPrice}
       />
     </div>

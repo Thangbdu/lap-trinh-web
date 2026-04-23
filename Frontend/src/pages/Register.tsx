@@ -72,7 +72,15 @@ export default function Register() {
       const token = userData?.token;
       if (token) localStorage.setItem('token', token);
       if (setUserFromOAuth) setUserFromOAuth(userData);
-      navigate('/');
+      
+      // Điều hướng dựa trên role sau khi đăng ký
+      if (userData.role === 'admin') {
+        navigate('/admin');
+      } else if (userData.role === 'staff') {
+        navigate('/staff');
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       setError(err.message || 'Mã OTP không đúng. Vui lòng thử lại.');
     } finally {

@@ -43,6 +43,7 @@ export default function Cart() {
   };
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     if (isAuthenticated) {
       fetchCart();
     } else {

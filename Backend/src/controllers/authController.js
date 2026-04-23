@@ -44,7 +44,7 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    const [users] = await pool.query('SELECT * FROM users WHERE email = ? OR phone = ?', [email, email]);
     if (users.length === 0) {
       return res.status(401).json({ success: false, message: 'Email hoặc mật khẩu không đúng.' });
     }
@@ -153,6 +153,41 @@ exports.changePassword = async (req, res) => {
     await pool.query('UPDATE users SET password_hash = ? WHERE user_id = ?', [new_hash, req.user.user_id]);
 
     res.json({ success: true, message: 'Đổi mật khẩu thành công!' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Đổi email (gmail)
+exports.changeEmail = async (req, res) => {
+  try {
+    const { new_email, current_password } = req.body;
+    if (!new_email || !current_password) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đầy đủ thông tin.' });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(new_email)) {
+      return res.status(400).json({ success: false, message: 'Địa chỉ Gmail không hợp lệ.' });
+    }
+
+    // Kiểm tra email mới đã tồn tại chưa
+    const [existing] = await pool.query('SELECT user_id FROM users WHERE email = ?', [new_email]);
+    if (existing.length > 0) {
+      return res.status(400).json({ success: false, message: 'Gmail này đã được sử dụng bởi tài khoản khác.' });
+    }
+
+    const [users] = await pool.query('SELECT * FROM users WHERE user_id = ?', [req.user.user_id]);
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+
+    const isMatch = await bcrypt.compare(current_password, users[0].password_hash);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Mật khẩu xác nhận không đúng.' });
+    }
+
+    await pool.query('UPDATE users SET email = ? WHERE user_id = ?', [new_email, req.user.user_id]);
+    res.json({ success: true, message: 'Đổi Gmail thành công!' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -23,21 +23,22 @@ exports.getDashboardStats = async (req, res) => {
       "SELECT status, COUNT(*) AS count FROM orders GROUP BY status ORDER BY count DESC"
     );
 
-    // Doanh thu 7 ngày gần nhất - luôn trả đủ 7 ngày kể cả ngày 0đ
+    // Doanh thu 7 ngày gần nhất - lấy từ các đơn hàng KHÔNG bị hủy và KHÔNG thất bại thanh toán
     const [revenueByDay] = await pool.query(`
-      SELECT
+      SELECT 
         dates.date,
-        COALESCE(SUM(o.final_amount), 0) AS revenue
+        COALESCE(SUM(o.final_amount), 0) AS revenue,
+        COUNT(o.order_id) AS order_count
       FROM (
         SELECT DATE(DATE_SUB(CURDATE(), INTERVAL n DAY)) AS date
         FROM (
-          SELECT 6 AS n UNION SELECT 5 UNION SELECT 4
+          SELECT 6 AS n UNION SELECT 5 UNION SELECT 4 
           UNION SELECT 3 UNION SELECT 2 UNION SELECT 1 UNION SELECT 0
         ) nums
       ) dates
-      LEFT JOIN orders o
-        ON DATE(o.order_date) = dates.date
-        AND o.status != 'Đã hủy'
+      LEFT JOIN orders o 
+        ON DATE(o.order_date) = dates.date 
+        AND o.status NOT IN ('Đã hủy', 'Thanh toán thất bại')
       GROUP BY dates.date
       ORDER BY dates.date ASC
     `);
@@ -152,6 +153,35 @@ exports.resetUserPassword = async (req, res) => {
     const password_hash = await bcrypt.hash(new_password, salt);
     await pool.query('UPDATE users SET password_hash = ? WHERE user_id = ?', [password_hash, id]);
     res.json({ success: true, message: 'Đặt lại mật khẩu thành công!' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// [Admin] Cập nhật email người dùng
+exports.updateUserEmail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Vui lòng cung cấp địa chỉ Gmail mới.' });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ success: false, message: 'Địa chỉ Gmail không hợp lệ.' });
+    }
+    // Kiểm tra email đã tồn tại bởi người khác chưa
+    const [existing] = await pool.query('SELECT user_id FROM users WHERE email = ? AND user_id != ?', [email, id]);
+    if (existing.length > 0) {
+      return res.status(400).json({ success: false, message: 'Gmail này đã được sử dụng bởi tài khoản khác.' });
+    }
+    // Kiểm tra user tồn tại
+    const [users] = await pool.query('SELECT user_id FROM users WHERE user_id = ?', [id]);
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+    await pool.query('UPDATE users SET email = ? WHERE user_id = ?', [email, id]);
+    res.json({ success: true, message: 'Cập nhật Gmail thành công!' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

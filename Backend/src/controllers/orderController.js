@@ -6,8 +6,21 @@ exports.createOrder = async (req, res) => {
   try {
     await connection.beginTransaction();
 
-    const { address_id, promo_code, items } = req.body;
-    // items = [{ product_id, quantity }]
+    const { address_id, promo_code, payment_method } = req.body;
+
+    // Lấy giỏ hàng từ DB theo user đang đăng nhập
+    const [cartRows] = await connection.query('SELECT cart_id FROM cart WHERE user_id = ?', [req.user.user_id]);
+    if (cartRows.length === 0) {
+      return res.status(400).json({ success: false, message: 'Giỏ hàng trống.' });
+    }
+
+    const cart_id = cartRows[0].cart_id;
+    const [cartItems] = await connection.query(
+      'SELECT ci.product_id, ci.quantity FROM cartitems ci WHERE ci.cart_id = ?',
+      [cart_id]
+    );
+
+    const items = cartItems;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Giỏ hàng trống.' });
@@ -86,11 +99,8 @@ exports.createOrder = async (req, res) => {
       [order_id, req.body.payment_method || 'COD', final_amount]
     );
 
-    // Xóa giỏ hàng sau khi đặt hàng
-    const [cart] = await connection.query('SELECT cart_id FROM cart WHERE user_id = ?', [req.user.user_id]);
-    if (cart.length > 0) {
-      await connection.query('DELETE FROM cartitems WHERE cart_id = ?', [cart[0].cart_id]);
-    }
+    // Xóa giỏ hàng sau khi đặt hàng (dùng lại cart_id đã có)
+    await connection.query('DELETE FROM cartitems WHERE cart_id = ?', [cart_id]);
 
     await connection.commit();
 
@@ -111,9 +121,11 @@ exports.createOrder = async (req, res) => {
 exports.getMyOrders = async (req, res) => {
   try {
     const [orders] = await pool.query(
-      `SELECT o.*, ua.full_address, ua.recipient_name, ua.phone_number
+      `SELECT o.*, ua.full_address, ua.recipient_name, ua.phone_number, 
+              p.payment_method, p.payment_status, p.transaction_id, p.paid_at
        FROM orders o
        LEFT JOIN user_addresses ua ON o.address_id = ua.address_id
+       LEFT JOIN payments p ON o.order_id = p.order_id
        WHERE o.user_id = ?
        ORDER BY o.order_date DESC`,
       [req.user.user_id]
@@ -134,6 +146,55 @@ exports.getMyOrders = async (req, res) => {
     res.json({ success: true, data: orders });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// [Tạm thời] Tạo dữ liệu mẫu cho người dùng để test UI
+exports.seedSampleOrders = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const userId = req.user.user_id;
+
+    // 1. Đơn hàng hoàn tất
+    const [o1] = await connection.query(
+      `INSERT INTO orders (user_id, total_amount, discount_amount, final_amount, status, order_date) 
+       VALUES (?, 32990000.00, 0, 32990000.00, 'Đã giao', NOW() - INTERVAL 1 DAY)`,
+      [userId]
+    );
+    await connection.query(
+      `INSERT INTO orderitems (order_id, product_id, quantity, price_at_purchase) VALUES (?, 1, 1, 32990000.00)`,
+      [o1.insertId]
+    );
+    await connection.query(
+      `INSERT INTO payments (order_id, payment_method, payment_status, amount, transaction_id, paid_at) 
+       VALUES (?, 'Momo', 'Đã thanh toán', 32990000.00, 'MOMO_SAMPLE_99', NOW() - INTERVAL 1 DAY)`,
+      [o1.insertId]
+    );
+
+    // 2. Đơn hàng chưa thanh toán
+    const [o2] = await connection.query(
+      `INSERT INTO orders (user_id, total_amount, discount_amount, final_amount, status, order_date) 
+       VALUES (?, 29990000.00, 0, 29990000.00, 'Chờ xác nhận', NOW())`,
+      [userId]
+    );
+    await connection.query(
+      `INSERT INTO orderitems (order_id, product_id, quantity, price_at_purchase) VALUES (?, 2, 1, 29990000.00)`,
+      [o2.insertId]
+    );
+    await connection.query(
+      `INSERT INTO payments (order_id, payment_method, payment_status, amount) 
+       VALUES (?, 'ZaloPay', 'Chờ thanh toán', 29990000.00)`,
+      [o2.insertId]
+    );
+
+    await connection.commit();
+    res.json({ success: true, message: 'Đã tạo dữ liệu mẫu thành công!' });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({ success: false, message: error.message });
+  } finally {
+    connection.release();
   }
 };
 
@@ -230,6 +291,117 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     res.json({ success: true, message: 'Cập nhật trạng thái thành công!' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// [Admin] Lấy danh sách thanh toán đang chờ (cho môi trường giả lập)
+exports.getPendingPayments = async (req, res) => {
+  try {
+    const [payments] = await pool.query(
+      `SELECT p.*, o.final_amount, o.order_date, u.full_name, u.email
+       FROM payments p
+       JOIN orders o ON p.order_id = o.order_id
+       JOIN users u ON o.user_id = u.user_id
+       WHERE p.payment_status = 'Chờ phê duyệt' AND p.payment_method != 'COD'
+       ORDER BY p.created_at DESC`
+    );
+    res.json({ success: true, data: payments });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// [Admin] Phê duyệt thanh toán giả lập
+exports.approvePayment = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const { id } = req.params; // payment_id
+
+    // Lấy thông tin thanh toán
+    const [payments] = await connection.query('SELECT order_id FROM payments WHERE payment_id = ?', [id]);
+    if (payments.length === 0) {
+      throw new Error('Không tìm thấy giao dịch thanh toán.');
+    }
+    const order_id = payments[0].order_id;
+
+    // Cập nhật trạng thái thanh toán
+    await connection.query(
+      "UPDATE payments SET payment_status = 'Đã thanh toán', paid_at = NOW(), transaction_id = ? WHERE payment_id = ?",
+      [`MOCK_ADMIN_${Date.now()}`, id]
+    );
+
+    // Cập nhật trạng thái đơn hàng sang 'Đang xử lý' (vì đã trả tiền)
+    await connection.query(
+      "UPDATE orders SET status = 'Đang xử lý' WHERE order_id = ?",
+      [order_id]
+    );
+
+    await connection.commit();
+    res.json({ success: true, message: 'Đã phê duyệt thanh toán và xác nhận đơn hàng thành công!' });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({ success: false, message: error.message });
+  } finally {
+    connection.release();
+  }
+};
+
+// [Admin] Từ chối thanh toán
+exports.rejectPayment = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const { id } = req.params; // payment_id
+
+    // Lấy thông tin thanh toán
+    const [payments] = await connection.query('SELECT order_id FROM payments WHERE payment_id = ?', [id]);
+    if (payments.length === 0) {
+      throw new Error('Không tìm thấy giao dịch thanh toán.');
+    }
+    const order_id = payments[0].order_id;
+
+    // Cập nhật trạng thái thanh toán sang 'Thanh toán thất bại'
+    await connection.query(
+      "UPDATE payments SET payment_status = 'Thanh toán thất bại' WHERE payment_id = ?",
+      [id]
+    );
+
+    // Cập nhật trạng thái đơn hàng sang 'Đã hủy'
+    await connection.query(
+      "UPDATE orders SET status = 'Đã hủy' WHERE order_id = ?",
+      [order_id]
+    );
+
+    await connection.commit();
+    res.json({ success: true, message: 'Đã từ chối thanh toán và hủy đơn hàng thành công!' });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({ success: false, message: error.message });
+  } finally {
+    connection.release();
+  }
+};
+
+// [User] Thông báo đã thanh toán (chờ duyệt)
+exports.notifyPayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.user_id;
+
+    // Cập nhật trạng thái thanh toán sang 'Chờ phê duyệt'
+    const [result] = await pool.query(
+      "UPDATE payments p JOIN orders o ON p.order_id = o.order_id SET p.payment_status = 'Chờ phê duyệt' WHERE p.order_id = ? AND o.user_id = ?",
+      [id, userId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng hoặc bạn không có quyền.' });
+    }
+
+    res.json({ success: true, message: 'Đã gửi thông báo thanh toán cho Admin.' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

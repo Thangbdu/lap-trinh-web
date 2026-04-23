@@ -154,7 +154,11 @@ exports.sendRegisterOtp = async (req, res) => {
     res.json({ success: true, message: 'Mã OTP đã được gửi đến email của bạn.' });
   } catch (error) {
     console.error('Send register OTP error:', error);
-    res.status(500).json({ success: false, message: 'Lỗi gửi email. Vui lòng thử lại.' });
+    let message = 'Lỗi gửi email. Vui lòng thử lại.';
+    if (error.code === 'EAUTH') {
+      message = 'Lỗi xác thực SMTP. Vui lòng thông báo cho quản trị viên kiểm tra cấu hình email.';
+    }
+    res.status(500).json({ success: false, message });
   }
 };
 
@@ -263,7 +267,11 @@ exports.forgotPassword = async (req, res) => {
     res.json({ success: true, message: 'Mã OTP đã được gửi đến email của bạn.' });
   } catch (error) {
     console.error('Forgot password error:', error);
-    res.status(500).json({ success: false, message: 'Lỗi gửi email. Vui lòng thử lại.' });
+    let message = 'Lỗi gửi email. Vui lòng thử lại.';
+    if (error.code === 'EAUTH') {
+      message = 'Lỗi xác thực SMTP. Vui lòng thông báo cho quản trị viên kiểm tra cấu hình email.';
+    }
+    res.status(500).json({ success: false, message });
   }
 };
 
@@ -343,5 +351,8 @@ exports.sendWelcomeEmail = async (email, name) => {
     console.log(`✅ Đã gửi email chào mừng đến ${email}`);
   } catch (err) {
     console.error('Welcome email error:', err.message);
+    if (err.code === 'EAUTH') {
+      console.error('👉 SMTP Authentication failed while sending welcome email.');
+    }
   }
 };

@@ -28,14 +28,10 @@ export default function Profile() {
     if (authLoading) return;
     if (!user) {
       navigate('/login?returnUrl=/profile', { replace: true });
-    } else if (user.role === 'admin') {
-      navigate('/admin', { replace: true });
-    } else if (user.role === 'staff') {
-      navigate('/staff', { replace: true });
     }
   }, [user, authLoading, navigate]);
 
-  if (authLoading || !user || user.role === 'admin' || user.role === 'staff') return null;
+  if (authLoading || !user) return null;
 
   return <ProfileContent />;
 }

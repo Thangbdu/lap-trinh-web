@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api, { getImageUrl } from '../utils/api';
 
@@ -51,7 +51,7 @@ interface User {
 interface Category { category_id: number; category_name: string; }
 interface Brand { brand_id: number; brand_name: string; }
 
-type Tab = 'dashboard' | 'products' | 'orders' | 'users' | 'categories' | 'brands' | 'accounts';
+type Tab = 'dashboard' | 'products' | 'orders' | 'users' | 'categories' | 'brands' | 'accounts' | 'payments' | 'promotions';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
@@ -214,6 +214,12 @@ export default function Admin() {
   const [myPwError, setMyPwError] = useState('');
   const [myPwSuccess, setMyPwSuccess] = useState('');
 
+  // Sửa email của admin hiện tại
+  const [myEmailForm, setMyEmailForm] = useState({ new_email: '', current_password: '' });
+  const [myEmailSaving, setMyEmailSaving] = useState(false);
+  const [myEmailError, setMyEmailError] = useState('');
+  const [myEmailSuccess, setMyEmailSuccess] = useState('');
+
   const [newUserForm, setNewUserForm] = useState({ full_name: '', email: '', password: '', phone: '', role: 'customer' });
   const [newUserSaving, setNewUserSaving] = useState(false);
   const [newUserError, setNewUserError] = useState('');
@@ -222,7 +228,26 @@ export default function Admin() {
   const [resetPwValue, setResetPwValue] = useState('');
   const [resetPwSaving, setResetPwSaving] = useState(false);
 
+  // Sửa email người dùng khác
+  const [editEmailTarget, setEditEmailTarget] = useState<User | null>(null);
+  const [editEmailValue, setEditEmailValue] = useState('');
+  const [editEmailSaving, setEditEmailSaving] = useState(false);
+
   const [loadingData, setLoadingData] = useState(false);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [promotions, setPromotions] = useState<any[]>([]);
+  const [promoForm, setPromoForm] = useState({
+    promo_code: '',
+    discount_percent: '',
+    max_discount_amount: '',
+    min_order_value: '',
+    start_date: '',
+    end_date: '',
+    is_active: 1
+  });
+  const [editPromo, setEditPromo] = useState<any | null>(null);
+  const [promoSaving, setPromoSaving] = useState(false);
+  const [approving, setApproving] = useState<number | null>(null);
   const [toast, setToast] = useState('');
 
   const showToast = (msg: string) => {
@@ -310,12 +335,38 @@ export default function Admin() {
     if (r.data) setBrandList(r.data);
   }, []);
 
+  const loadPendingPayments = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const res = await api.get<any>('/orders/admin/payments-pending');
+      if (res.success && res.data) {
+        setPayments(res.data);
+      }
+    } catch (err) {
+      console.error('Load payments error:', err);
+    } finally {
+      setLoadingData(false);
+    }
+  }, []);
+
+  const loadPromotions = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const r = await api.get<any>('/promotions');
+      if (r.data) setPromotions(r.data);
+    } catch (err) {
+      console.error('Promotions load error:', err);
+    } finally { setLoadingData(false); }
+  }, []);
+
   useEffect(() => { if (tab === 'dashboard') loadDashboard(); }, [tab, loadDashboard]);
   useEffect(() => { if (tab === 'products') loadProducts(); }, [tab, loadProducts]);
   useEffect(() => { if (tab === 'orders') loadOrders(); }, [tab, loadOrders]);
   useEffect(() => { if (tab === 'users' || tab === 'accounts') loadUsers(); }, [tab, loadUsers]);
   useEffect(() => { if (tab === 'categories') loadCategories(); }, [tab, loadCategories]);
   useEffect(() => { if (tab === 'brands') loadBrands(); }, [tab, loadBrands]);
+  useEffect(() => { if (tab === 'payments') loadPendingPayments(); }, [tab, loadPendingPayments]);
+  useEffect(() => { if (tab === 'promotions') loadPromotions(); }, [tab, loadPromotions]);
 
   // Category CRUD
   const saveCat = async () => {
@@ -403,6 +454,70 @@ export default function Admin() {
     } catch (e: any) { alert(e.message); }
   };
 
+  const approveMockPayment = async (paymentId: number) => {
+    setApproving(paymentId);
+    try {
+      const res = await api.put(`/orders/admin/approve-payment/${paymentId}`, {});
+      if (res.success) {
+        showToast('✅ Đã phê duyệt thanh toán!');
+        loadPendingPayments();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi phê duyệt.');
+    } finally {
+      setApproving(null);
+    }
+  };
+
+  const rejectMockPayment = async (paymentId: number) => {
+    if (!confirm('Bạn có chắc chắn muốn TỪ CHỐI thanh toán này? Đơn hàng sẽ bị hủy.')) return;
+    setApproving(paymentId);
+    try {
+      const res = await api.put(`/orders/admin/reject-payment/${paymentId}`, {});
+      if (res.success) {
+        showToast('❌ Đã từ chối thanh toán và hủy đơn!');
+        loadPendingPayments();
+      }
+    } catch (err: any) {
+      alert(err.message || 'Lỗi khi từ chối.');
+    } finally {
+      setApproving(null);
+    }
+  };
+
+  const savePromo = async () => {
+    if (!promoForm.promo_code.trim()) return;
+    setPromoSaving(true);
+    try {
+      if (editPromo) {
+        await api.put(`/promotions/${editPromo.promo_id}`, promoForm);
+        showToast('Cập nhật mã giảm giá thành công!');
+      } else {
+        await api.post('/promotions', promoForm);
+        showToast('Thêm mã giảm giá thành công!');
+      }
+      setPromoForm({
+        promo_code: '',
+        discount_percent: '',
+        max_discount_amount: '',
+        min_order_value: '',
+        start_date: '',
+        end_date: '',
+        is_active: 1
+      });
+      setEditPromo(null);
+      loadPromotions();
+    } catch (e: any) { alert(e.message); }
+    finally { setPromoSaving(false); }
+  };
+
+  const deletePromo = async (id: number) => {
+    if (!confirm('Xóa mã giảm giá này?')) return;
+    await api.delete(`/promotions/${id}`);
+    showToast('Đã xóa mã giảm giá!');
+    loadPromotions();
+  };
+
   if (loading) return <div style={styles.loading}>Đang tải...</div>;
   if (!user || user.role !== 'admin') return null;
 
@@ -433,7 +548,11 @@ export default function Admin() {
 
       {/* Sidebar */}
       <aside style={styles.sidebar}>
-        <div style={styles.sidebarLogo}>
+        <div 
+          onClick={() => window.location.href = '/'} 
+          style={{ ...styles.sidebarLogo, cursor: 'pointer' }}
+          title="Về trang chủ (F5)"
+        >
           <div style={{ width: 38, height: 38, background: '#4B0082', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="5" y="1" width="14" height="22" rx="3" stroke="white" strokeWidth="2"/>
@@ -441,7 +560,7 @@ export default function Admin() {
               <rect x="8" y="18" width="8" height="2" rx="1" fill="white"/>
             </svg>
           </div>
-          <span style={styles.sidebarTitle}>Admin Panel</span>
+          <span style={styles.sidebarTitle}>MobileStore</span>
         </div>
         <nav style={styles.nav}>
           {([
@@ -451,6 +570,8 @@ export default function Admin() {
             { key: 'users', icon: '👥', label: 'Người dùng' },
             { key: 'categories', icon: '🏷️', label: 'Danh mục' },
             { key: 'brands', icon: '🏢', label: 'Thương hiệu' },
+            { key: 'promotions', icon: '🎟️', label: 'Mã giảm giá' },
+            { key: 'payments', icon: '💳', label: 'Duyệt thanh toán' },
             { key: 'accounts', icon: '🔑', label: 'Tài khoản' },
           ] as { key: Tab; icon: string; label: string }[]).map(item => (
             <button
@@ -463,7 +584,12 @@ export default function Admin() {
             </button>
           ))}
         </nav>
-        <button onClick={() => navigate('/')} style={styles.backBtn}>← Về trang chủ</button>
+        <button 
+          onClick={() => window.location.href = '/'} 
+          style={styles.backBtn}
+        >
+          ← Về trang chủ
+        </button>
       </aside>
 
       {/* Main content */}
@@ -485,6 +611,7 @@ export default function Admin() {
               {tab === 'categories' && '🏷️ Quản lý danh mục'}
               {tab === 'brands' && '🏢 Quản lý thương hiệu'}
               {tab === 'accounts' && '🔑 Quản lý tài khoản'}
+              {tab === 'payments' && '💳 Phê duyệt thanh toán'}
             </h1>
           </div>
           <span style={styles.adminBadge}>👤 {user.full_name}</span>
@@ -568,19 +695,64 @@ export default function Admin() {
                 </div>
 
                 {/* Revenue by day */}
-                <div style={{ ...styles.dashCard, marginTop: 20 }}>
-                  <h3 style={styles.cardTitle}>Doanh thu 7 ngày gần nhất</h3>
+                <div style={{ ...styles.dashCard, marginTop: 24, position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: 0, right: 0, width: 150, height: 150, background: 'radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <div>
+                      <h3 style={styles.cardTitle}>Doanh thu 7 ngày gần nhất</h3>
+                      <p style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Biểu đồ tăng trưởng dựa trên doanh số thực tế</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                       <span style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: '#94a3b8' }}>
+                         <div style={{ width: 8, height: 8, borderRadius: 2, background: 'linear-gradient(180deg, #6366f1, #8b5cf6)' }} /> Doanh thu
+                       </span>
+                    </div>
+                  </div>
+
                   {(!stats.revenueByDay || stats.revenueByDay.length === 0) ? (
-                    <div style={{ color: '#64748b', textAlign: 'center', padding: '20px 0', fontSize: 14 }}>Chưa có giao dịch trong 7 ngày qua</div>
+                    <div style={{ color: '#64748b', textAlign: 'center', padding: '40px 0', fontSize: 14 }}>Chưa có giao dịch trong 7 ngày qua</div>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120, padding: '8px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, height: 180, padding: '10px 0 30px 0' }}>
                       {stats.revenueByDay.map((d, i) => {
-                        const maxRev = Math.max(...stats.revenueByDay.map(x => Number(x.revenue)));
+                        const vals = stats.revenueByDay.map(x => Number(x.revenue));
+                        const maxRev = Math.max(...vals);
                         const h = maxRev > 0 ? Math.round((Number(d.revenue) / maxRev) * 100) : 0;
+                        const hasOrders = (d as any).order_count > 0;
+                        
                         return (
-                          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                            <div title={fmt(Number(d.revenue))} style={{ width: '100%', height: `${h}%`, minHeight: 4, background: 'linear-gradient(180deg,#6366f1,#8b5cf6)', borderRadius: '4px 4px 0 0', transition: 'height 0.4s' }} />
-                            <span style={{ fontSize: 10, color: '#94a3b8' }}>{d.date.slice(5)}</span>
+                          <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, height: '100%' }}>
+                            <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', position: 'relative' }}>
+                              {/* Tooltip on hover (CSS is harder in inline styles, so we use title) */}
+                              <div 
+                                title={`${new Date(d.date).toLocaleDateString('vi-VN')}\nDoanh thu: ${fmt(Number(d.revenue))}\nĐơn hàng: ${(d as any).order_count || 0}`}
+                                style={{ 
+                                  width: '100%', 
+                                  maxWidth: 40,
+                                  height: `${Math.max(h, 2)}%`, 
+                                  background: hasOrders ? 'linear-gradient(180deg, #6366f1, #a855f7)' : '#334155', 
+                                  borderRadius: '6px 6px 2px 2px', 
+                                  transition: 'height 1s cubic-bezier(0.4, 0, 0.2, 1)',
+                                  boxShadow: hasOrders ? '0 4px 12px rgba(99, 102, 241, 0.3)' : 'none',
+                                  cursor: 'pointer',
+                                  position: 'relative',
+                                  zIndex: 1
+                                }} 
+                              >
+                                {h > 20 && (
+                                  <div style={{ position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)', fontSize: 9, fontWeight: 'bold', color: '#818cf8', whiteSpace: 'nowrap' }}>
+                                    {Number(d.revenue) > 1000000 ? (Number(d.revenue)/1000000).toFixed(1)+'M' : (Number(d.revenue)/1000).toFixed(0)+'K'}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                               <span style={{ fontSize: 10, fontWeight: 'bold', color: hasOrders ? '#f8fafc' : '#475569' }}>
+                                 {new Date(d.date).toLocaleDateString('vi-VN', { weekday: 'short' })}
+                               </span>
+                               <span style={{ fontSize: 9, color: '#64748b' }}>
+                                 {new Date(d.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                               </span>
+                            </div>
                           </div>
                         );
                       })}
@@ -931,37 +1103,91 @@ export default function Admin() {
         {/* ── ACCOUNTS ── */}
         {tab === 'accounts' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-            {/* Đổi MK cá nhân */}
+            {/* Đổi MK + Sửa email cá nhân */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Card gộp: Sửa Gmail + Đổi MK */}
               <div style={styles.dashCard}>
-                <h3 style={styles.cardTitle}>🔐 Đổi mật khẩu tài khoản của tôi</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {myPwError && <div style={styles.errorBox}>{myPwError}</div>}
-                  {myPwSuccess && <div style={{ background: '#064e3b', border: '1px solid #065f46', color: '#6ee7b7', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>{myPwSuccess}</div>}
-                  <label style={styles.label}>Mật khẩu hiện tại
-                    <input type="password" value={myPwForm.current_password} onChange={e => setMyPwForm(f => ({ ...f, current_password: e.target.value }))} style={styles.input} placeholder="Nhập mật khẩu hiện tại" />
-                  </label>
-                  <label style={styles.label}>Mật khẩu mới
-                    <input type="password" value={myPwForm.new_password} onChange={e => setMyPwForm(f => ({ ...f, new_password: e.target.value }))} style={styles.input} placeholder="Ít nhất 6 ký tự" />
-                  </label>
-                  <label style={styles.label}>Xác nhận mật khẩu mới
-                    <input type="password" value={myPwForm.confirm_password} onChange={e => setMyPwForm(f => ({ ...f, confirm_password: e.target.value }))} style={styles.input} placeholder="Nhập lại mật khẩu mới" />
-                  </label>
-                  <button disabled={myPwSaving} onClick={async () => {
-                    setMyPwError(''); setMyPwSuccess('');
-                    if (!myPwForm.current_password || !myPwForm.new_password) { setMyPwError('Vui lòng điền đầy đủ thông tin.'); return; }
-                    if (myPwForm.new_password.length < 6) { setMyPwError('Mật khẩu mới phải có ít nhất 6 ký tự.'); return; }
-                    if (myPwForm.new_password !== myPwForm.confirm_password) { setMyPwError('Mật khẩu xác nhận không khớp.'); return; }
-                    setMyPwSaving(true);
-                    try {
-                      await api.put('/auth/change-password', { current_password: myPwForm.current_password, new_password: myPwForm.new_password });
-                      setMyPwSuccess('✅ Đổi mật khẩu thành công!');
-                      setMyPwForm({ current_password: '', new_password: '', confirm_password: '' });
-                    } catch (e: any) { setMyPwError(e.message || 'Lỗi khi đổi mật khẩu.'); }
-                    finally { setMyPwSaving(false); }
-                  }} style={styles.btnPrimary}>
-                    {myPwSaving ? 'Đang lưu...' : '💾 Cập nhật mật khẩu'}
-                  </button>
+                <h3 style={styles.cardTitle}>⚙️ Thông tin tài khoản của tôi</h3>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14 }}>
+                  Gmail hiện tại: <span style={{ color: '#818cf8', fontWeight: 600 }}>{user?.email}</span>
+                </div>
+
+                {/* ── Phần đổi Gmail ── */}
+                <div style={{ marginBottom: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#a5b4fc', marginBottom: 10 }}>✉️ Đổi Gmail</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {myEmailError && <div style={styles.errorBox}>{myEmailError}</div>}
+                    {myEmailSuccess && <div style={{ background: '#064e3b', border: '1px solid #065f46', color: '#6ee7b7', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>{myEmailSuccess}</div>}
+                    <label style={styles.label}>Gmail mới *
+                      <input
+                        type="email"
+                        value={myEmailForm.new_email}
+                        onChange={e => setMyEmailForm(f => ({ ...f, new_email: e.target.value }))}
+                        style={styles.input}
+                        placeholder="admin@gmail.com"
+                      />
+                    </label>
+                    <label style={styles.label}>Xác nhận bằng mật khẩu *
+                      <input
+                        type="password"
+                        value={myEmailForm.current_password}
+                        onChange={e => setMyEmailForm(f => ({ ...f, current_password: e.target.value }))}
+                        style={styles.input}
+                        placeholder="Nhập mật khẩu để xác nhận"
+                      />
+                    </label>
+                    <button disabled={myEmailSaving} onClick={async () => {
+                      setMyEmailError(''); setMyEmailSuccess('');
+                      if (!myEmailForm.new_email) { setMyEmailError('Vui lòng nhập Gmail mới.'); return; }
+                      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(myEmailForm.new_email)) { setMyEmailError('Gmail không hợp lệ.'); return; }
+                      if (!myEmailForm.current_password) { setMyEmailError('Vui lòng nhập mật khẩu để xác nhận.'); return; }
+                      setMyEmailSaving(true);
+                      try {
+                        await api.put('/auth/change-email', { new_email: myEmailForm.new_email, current_password: myEmailForm.current_password });
+                        setMyEmailSuccess('✅ Đổi Gmail thành công! Vui lòng đăng nhập lại.');
+                        setMyEmailForm({ new_email: '', current_password: '' });
+                      } catch (e: any) { setMyEmailError(e.message || 'Lỗi khi đổi Gmail.'); }
+                      finally { setMyEmailSaving(false); }
+                    }} style={styles.btnPrimary}>
+                      {myEmailSaving ? 'Đang lưu...' : '✉️ Cập nhật Gmail'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Đường ngăn cách */}
+                <div style={{ borderTop: '1px solid #1e293b', margin: '20px 0' }} />
+
+                {/* ── Phần đổi mật khẩu ── */}
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#a5b4fc', marginBottom: 10 }}>🔐 Đổi mật khẩu</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {myPwError && <div style={styles.errorBox}>{myPwError}</div>}
+                    {myPwSuccess && <div style={{ background: '#064e3b', border: '1px solid #065f46', color: '#6ee7b7', padding: '10px 14px', borderRadius: 8, fontSize: 13 }}>{myPwSuccess}</div>}
+                    <label style={styles.label}>Mật khẩu hiện tại
+                      <input type="password" value={myPwForm.current_password} onChange={e => setMyPwForm(f => ({ ...f, current_password: e.target.value }))} style={styles.input} placeholder="Nhập mật khẩu hiện tại" />
+                    </label>
+                    <label style={styles.label}>Mật khẩu mới
+                      <input type="password" value={myPwForm.new_password} onChange={e => setMyPwForm(f => ({ ...f, new_password: e.target.value }))} style={styles.input} placeholder="Ít nhất 6 ký tự" />
+                    </label>
+                    <label style={styles.label}>Xác nhận mật khẩu mới
+                      <input type="password" value={myPwForm.confirm_password} onChange={e => setMyPwForm(f => ({ ...f, confirm_password: e.target.value }))} style={styles.input} placeholder="Nhập lại mật khẩu mới" />
+                    </label>
+                    <button disabled={myPwSaving} onClick={async () => {
+                      setMyPwError(''); setMyPwSuccess('');
+                      if (!myPwForm.current_password || !myPwForm.new_password) { setMyPwError('Vui lòng điền đầy đủ thông tin.'); return; }
+                      if (myPwForm.new_password.length < 6) { setMyPwError('Mật khẩu mới phải có ít nhất 6 ký tự.'); return; }
+                      if (myPwForm.new_password !== myPwForm.confirm_password) { setMyPwError('Mật khẩu xác nhận không khớp.'); return; }
+                      setMyPwSaving(true);
+                      try {
+                        await api.put('/auth/change-password', { current_password: myPwForm.current_password, new_password: myPwForm.new_password });
+                        setMyPwSuccess('✅ Đổi mật khẩu thành công!');
+                        setMyPwForm({ current_password: '', new_password: '', confirm_password: '' });
+                      } catch (e: any) { setMyPwError(e.message || 'Lỗi khi đổi mật khẩu.'); }
+                      finally { setMyPwSaving(false); }
+                    }} style={styles.btnPrimary}>
+                      {myPwSaving ? 'Đang lưu...' : '💾 Cập nhật mật khẩu'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1009,8 +1235,42 @@ export default function Admin() {
               </div>
             </div>
 
-            {/* Danh sách tài khoản + Reset MK */}
+            {/* Danh sách tài khoản + Reset MK + Sửa Email */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Card sửa email người dùng */}
+              {editEmailTarget && (
+                <div style={styles.dashCard}>
+                  <h3 style={styles.cardTitle}>✉️ Sửa Gmail cho: <span style={{ color: '#818cf8' }}>{editEmailTarget.full_name}</span></h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>Gmail hiện tại: <span style={{ color: '#94a3b8' }}>{editEmailTarget.email}</span></div>
+                    <input
+                      type="email"
+                      value={editEmailValue}
+                      onChange={e => setEditEmailValue(e.target.value)}
+                      placeholder="Gmail mới (vd: user@gmail.com)"
+                      style={styles.input}
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button disabled={editEmailSaving} onClick={async () => {
+                        if (!editEmailValue) { alert('Vui lòng nhập Gmail mới!'); return; }
+                        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmailValue)) { alert('Gmail không hợp lệ!'); return; }
+                        setEditEmailSaving(true);
+                        try {
+                          await api.put(`/admin/users/${editEmailTarget.user_id}/email`, { email: editEmailValue });
+                          showToast(`Đã cập nhật Gmail cho ${editEmailTarget.full_name}!`);
+                          setEditEmailTarget(null);
+                          setEditEmailValue('');
+                          loadUsers();
+                        } catch (e: any) { alert(e.message || 'Lỗi khi cập nhật Gmail.'); }
+                        finally { setEditEmailSaving(false); }
+                      }} style={styles.btnPrimary}>{editEmailSaving ? 'Đang lưu...' : '✉️ Xác nhận sửa Gmail'}</button>
+                      <button onClick={() => { setEditEmailTarget(null); setEditEmailValue(''); }} style={styles.btnSecondary}>Hủy</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Card reset mật khẩu */}
               {resetPwTarget && (
                 <div style={styles.dashCard}>
                   <h3 style={styles.cardTitle}>🔑 Reset mật khẩu cho: <span style={{ color: '#818cf8' }}>{resetPwTarget.full_name}</span></h3>
@@ -1063,7 +1323,13 @@ export default function Admin() {
                           {u.is_active ? '✅ Active' : '🔒 Khóa'}
                         </span>
                         <button
-                          onClick={() => { setResetPwTarget(u); setResetPwValue(''); }}
+                          onClick={() => { setEditEmailTarget(u); setEditEmailValue(''); setResetPwTarget(null); }}
+                          style={{ padding: '3px 8px', borderRadius: 6, border: 'none', background: '#065f46', color: '#6ee7b7', cursor: 'pointer', fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap' }}
+                        >
+                          ✉️ Sửa Gmail
+                        </button>
+                        <button
+                          onClick={() => { setResetPwTarget(u); setResetPwValue(''); setEditEmailTarget(null); }}
                           style={{ padding: '3px 8px', borderRadius: 6, border: 'none', background: '#1d4ed8', color: '#93c5fd', cursor: 'pointer', fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap' }}
                         >
                           🔑 Reset MK
@@ -1077,6 +1343,239 @@ export default function Admin() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── PAYMENTS ── */}
+        {tab === 'payments' && (
+          <div style={styles.dashCard}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={styles.cardTitle}>💳 Các giao dịch đang chờ phê duyệt</h3>
+              <button 
+                onClick={loadPendingPayments}
+                style={{ ...styles.btnSecondary, padding: '4px 10px', fontSize: 12 }}
+              >
+                🔄 Làm mới
+              </button>
+            </div>
+            <div style={styles.tableWrap}>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>ID</th>
+                    <th style={styles.th}>Khách hàng</th>
+                    <th style={styles.th}>Phương thức</th>
+                    <th style={styles.th}>Số tiền</th>
+                    <th style={styles.th}>Thời gian</th>
+                    <th style={styles.th}>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingData ? (
+                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Đang tải...</td></tr>
+                  ) : payments.length === 0 ? (
+                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>✨ Không có giao dịch nào đang chờ</td></tr>
+                  ) : payments.map(p => (
+                    <tr key={p.payment_id} style={styles.tr}>
+                      <td style={styles.td}><span style={{ fontFamily: 'monospace', color: '#818cf8' }}>#{p.payment_id}</span></td>
+                      <td style={styles.td}>
+                        <div style={{ fontWeight: 600, color: '#e2e8f0' }}>{p.full_name}</div>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>{p.email}</div>
+                      </td>
+                      <td style={styles.td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                           <span style={{ fontSize: 16 }}>{p.payment_method === 'Momo' ? '📱' : p.payment_method === 'ZaloPay' ? '💸' : '🏦'}</span>
+                           {p.payment_method}
+                        </div>
+                      </td>
+                      <td style={styles.td}><span style={{ color: '#10b981', fontWeight: 700 }}>{fmt(p.amount)}</span></td>
+                      <td style={styles.td}><span style={{ fontSize: 12, color: '#64748b' }}>{new Date(p.created_at).toLocaleString('vi-VN')}</span></td>
+                      <td style={styles.td}>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            onClick={() => approveMockPayment(p.payment_id)}
+                            disabled={approving === p.payment_id}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: 8,
+                              fontSize: 12,
+                              background: 'linear-gradient(135deg,#059669,#10b981)',
+                              color: '#fff',
+                              border: 'none',
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {approving === p.payment_id ? '...' : 'Duyệt'}
+                          </button>
+                          <button
+                            onClick={() => rejectMockPayment(p.payment_id)}
+                            disabled={approving === p.payment_id}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: 8,
+                              fontSize: 12,
+                              background: 'linear-gradient(135deg,#b91c1c,#ef4444)',
+                              color: '#fff',
+                              border: 'none',
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {approving === p.payment_id ? '...' : 'Không duyệt'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        {/* ── PROMOTIONS ── */}
+        {tab === 'promotions' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: 24 }}>
+            <div style={styles.dashCard}>
+              <h3 style={styles.cardTitle}>🎟️ Danh sách mã giảm giá</h3>
+              <div style={styles.tableWrap}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Mã</th>
+                      <th style={styles.th}>Giảm (%)</th>
+                      <th style={styles.th}>Min Đơn</th>
+                      <th style={styles.th}>Thời hạn</th>
+                      <th style={styles.th}>Trạng thái</th>
+                      <th style={styles.th}>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loadingData ? (
+                      <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#64748b' }}>Đang tải...</td></tr>
+                    ) : promotions.map(p => (
+                      <tr key={p.promo_id} style={styles.tr}>
+                        <td style={styles.td}><span style={{ fontWeight: 700, color: '#818cf8' }}>{p.promo_code}</span></td>
+                        <td style={styles.td}>{p.discount_percent}%</td>
+                        <td style={styles.td}>{fmt(Number(p.min_order_value))}</td>
+                        <td style={styles.td}>
+                          <div style={{ fontSize: 11 }}>Từ: {new Date(p.start_date).toLocaleDateString('vi-VN')}</div>
+                          <div style={{ fontSize: 11 }}>Đến: {new Date(p.end_date).toLocaleDateString('vi-VN')}</div>
+                        </td>
+                        <td style={styles.td}>
+                          <span style={{ ...styles.badge, background: p.is_active ? '#064e3b' : '#450a0a', color: p.is_active ? '#6ee7b7' : '#fca5a5' }}>
+                            {p.is_active ? 'Kích hoạt' : 'Khóa'}
+                          </span>
+                        </td>
+                        <td style={styles.td}>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={() => { 
+                              setEditPromo(p); 
+                              setPromoForm({
+                                promo_code: p.promo_code,
+                                discount_percent: p.discount_percent,
+                                max_discount_amount: p.max_discount_amount || '',
+                                min_order_value: p.min_order_value,
+                                start_date: new Date(p.start_date).toISOString().slice(0, 16),
+                                end_date: new Date(p.end_date).toISOString().slice(0, 16),
+                                is_active: p.is_active
+                              });
+                            }} style={styles.btnEdit}>Sửa</button>
+                            <button onClick={() => deletePromo(p.promo_id)} style={styles.btnDanger}>Xóa</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style={styles.dashCard}>
+              <h3 style={styles.cardTitle}>{editPromo ? '✏️ Sửa mã giảm giá' : '🎟️ Thêm mã mới'}</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <label style={styles.label}>Mã giảm giá
+                  <input 
+                    placeholder="VOURCHE5" 
+                    value={promoForm.promo_code} 
+                    onChange={e => setPromoForm({...promoForm, promo_code: e.target.value})} 
+                    style={styles.input} 
+                  />
+                </label>
+                <label style={styles.label}>Phần trăm giảm (%)
+                  <select 
+                    value={promoForm.discount_percent} 
+                    onChange={e => setPromoForm({...promoForm, discount_percent: e.target.value})} 
+                    style={styles.input}
+                  >
+                    <option value="">Chọn % giảm</option>
+                    {[5, 10, 15, 20, 25, 30].map(v => <option key={v} value={v}>{v}%</option>)}
+                  </select>
+                </label>
+                <label style={styles.label}>Đơn hàng tối thiểu (₫)
+                  <input 
+                    type="number" 
+                    value={promoForm.min_order_value} 
+                    onChange={e => setPromoForm({...promoForm, min_order_value: e.target.value})} 
+                    style={styles.input} 
+                  />
+                </label>
+                <label style={styles.label}>Ngày bắt đầu
+                  <input 
+                    type="datetime-local" 
+                    value={promoForm.start_date} 
+                    onChange={e => setPromoForm({...promoForm, start_date: e.target.value})} 
+                    style={styles.input} 
+                  />
+                </label>
+                <label style={styles.label}>Ngày kết thúc
+                  <input 
+                    type="datetime-local" 
+                    value={promoForm.end_date} 
+                    onChange={e => setPromoForm({...promoForm, end_date: e.target.value})} 
+                    style={styles.input} 
+                  />
+                </label>
+                <label style={styles.label}>Trạng thái
+                  <select 
+                    value={promoForm.is_active} 
+                    onChange={e => setPromoForm({...promoForm, is_active: Number(e.target.value)})} 
+                    style={styles.input}
+                  >
+                    <option value={1}>Kích hoạt</option>
+                    <option value={0}>Khóa</option>
+                  </select>
+                </label>
+                <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                  <button 
+                    onClick={savePromo} 
+                    disabled={promoSaving} 
+                    style={{ ...styles.btnPrimary, flex: 1 }}
+                  >
+                    {promoSaving ? 'Đang lưu...' : 'Lưu mã'}
+                  </button>
+                  {editPromo && (
+                    <button 
+                      onClick={() => {
+                        setEditPromo(null);
+                        setPromoForm({
+                          promo_code: '',
+                          discount_percent: '',
+                          max_discount_amount: '',
+                          min_order_value: '',
+                          start_date: '',
+                          end_date: '',
+                          is_active: 1
+                        });
+                      }} 
+                      style={{ ...styles.btnSecondary, flex: 1 }}
+                    >
+                      Hủy
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
