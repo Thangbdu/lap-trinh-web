@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api, { getImageUrl } from '../utils/api';
+import AdminAIChat from '../components/AdminAIChat';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface DashboardStats {
@@ -51,7 +52,7 @@ interface User {
 interface Category { category_id: number; category_name: string; }
 interface Brand { brand_id: number; brand_name: string; }
 
-type Tab = 'dashboard' | 'products' | 'orders' | 'users' | 'categories' | 'brands' | 'accounts' | 'payments' | 'promotions';
+type Tab = 'dashboard' | 'products' | 'orders' | 'users' | 'categories' | 'brands' | 'accounts' | 'payments' | 'promotions' | 'ai_assistant';
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
@@ -572,6 +573,7 @@ export default function Admin() {
             { key: 'brands', icon: '🏢', label: 'Thương hiệu' },
             { key: 'promotions', icon: '🎟️', label: 'Mã giảm giá' },
             { key: 'payments', icon: '💳', label: 'Duyệt thanh toán' },
+            { key: 'ai_assistant', icon: '🤖', label: 'Trợ lý AI' },
             { key: 'accounts', icon: '🔑', label: 'Tài khoản' },
           ] as { key: Tab; icon: string; label: string }[]).map(item => (
             <button
@@ -612,6 +614,7 @@ export default function Admin() {
               {tab === 'brands' && '🏢 Quản lý thương hiệu'}
               {tab === 'accounts' && '🔑 Quản lý tài khoản'}
               {tab === 'payments' && '💳 Phê duyệt thanh toán'}
+              {tab === 'ai_assistant' && '🤖 Quản lý trợ lý AI'}
             </h1>
           </div>
           <span style={styles.adminBadge}>👤 {user.full_name}</span>
@@ -1387,7 +1390,11 @@ export default function Admin() {
                       </td>
                       <td style={styles.td}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                           <span style={{ fontSize: 16 }}>{p.payment_method === 'Momo' ? '📱' : p.payment_method === 'ZaloPay' ? '💸' : '🏦'}</span>
+                           <span style={{ fontSize: 16 }}>
+                             {p.payment_method === 'Momo' ? '📱' : 
+                              p.payment_method === 'ZaloPay' ? '💸' : 
+                              p.payment_method === 'COD' ? '🚚' : '🏦'}
+                           </span>
                            {p.payment_method}
                         </div>
                       </td>
@@ -1579,6 +1586,11 @@ export default function Admin() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+        {tab === 'ai_assistant' && (
+          <div className="animate-in fade-in duration-500">
+            <AdminAIChat />
           </div>
         )}
       </main>

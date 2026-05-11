@@ -80,6 +80,20 @@ export default function ProductDetail() {
     }
   };
 
+  const handleBuyNow = async () => {
+    if (!isAuthenticated) { navigate('/login'); return; }
+    setAdding(true);
+    try {
+      await api.post('/cart', { product_id: product?.product_id, quantity: 1 });
+      navigate('/checkout');
+    } catch (err: any) {
+      setToast(err.message || 'Lỗi khi mua sản phẩm.');
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setAdding(false);
+    }
+  };
+
   const formatPrice = (price: number) => new Intl.NumberFormat('vi-VN').format(price) + 'đ';
 
   const discount = product?.old_price
@@ -321,21 +335,29 @@ export default function ProductDetail() {
                   {/* CTA buttons — giống Quick View footer */}
                   <div className="flex flex-col sm:flex-row gap-3 pt-2 mt-auto">
                     <button
+                      onClick={handleBuyNow}
+                      disabled={adding || product.stock_quantity === 0}
+                      className="flex-[2] bg-primary text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 text-sm shadow-lg shadow-primary/20"
+                    >
+                      <span className="material-symbols-outlined">bolt</span>
+                      MUA NGAY
+                    </button>
+                    <button
                       onClick={addToCart}
                       disabled={adding || product.stock_quantity === 0}
-                      className="flex-1 bg-[#4B0082] text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:brightness-110 transition-all disabled:opacity-50 text-sm"
+                      className="flex-1 bg-primary/10 text-primary py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/20 transition-all disabled:opacity-50 text-sm"
                     >
-                      {adding ? 'Đang thêm...'
+                      {adding ? '...'
                         : product.stock_quantity === 0 ? 'Hết hàng'
-                        : <><span className="material-symbols-outlined">add_shopping_cart</span> Thêm vào giỏ</>
+                        : <><span className="material-symbols-outlined">add_shopping_cart</span> Giỏ hàng</>
                       }
                     </button>
                     <Link
                       to="/cart"
-                      className="flex-1 border-2 border-[#4B0082] text-[#4B0082] py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#4B0082]/5 transition-all text-sm"
+                      className="flex-1 border border-slate-200 dark:border-slate-700 text-slate-500 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-sm"
                     >
                       <span className="material-symbols-outlined">shopping_cart</span>
-                      Xem giỏ hàng
+                      Giỏ hàng
                     </Link>
                   </div>
                 </div>

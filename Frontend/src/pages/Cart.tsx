@@ -28,6 +28,12 @@ export default function Cart() {
   const [removing, setRemoving] = useState<number | null>(null);
   const [updating, setUpdating] = useState<number | null>(null);
 
+  // Promo state
+  const [promoCode, setPromoCode] = useState('');
+  const [discountInfo, setDiscountInfo] = useState<{ promo_code: string; discount_amount: number } | null>(null);
+  const [checkingPromo, setCheckingPromo] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
+
   // Lấy giỏ hàng
   const fetchCart = async () => {
     try {
@@ -82,6 +88,28 @@ export default function Cart() {
     }
   };
 
+  // Kiểm tra mã giảm giá
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim() || checkingPromo) return;
+    setCheckingPromo(true);
+    try {
+      const res = await api.post('/promotions/check', { 
+        code: promoCode.trim().toUpperCase(), 
+        totalAmount: total 
+      });
+      if (res.success) {
+        setDiscountInfo(res.data);
+        setToast({ msg: `Đã áp dụng mã ${res.data.promo_code}!`, type: 'success' });
+      }
+    } catch (err: any) {
+      setToast({ msg: err.message || 'Mã không hợp lệ!', type: 'error' });
+      setDiscountInfo(null);
+    } finally {
+      setCheckingPromo(false);
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
   // Format tiền VND
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN').format(price) + '₫';
@@ -91,7 +119,14 @@ export default function Cart() {
   const total = cart?.total || 0;
 
   return (
-    <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100">
+    <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-24 right-6 z-[100] px-5 py-3 rounded-lg shadow-xl flex items-center gap-2 animate-bounce ${toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
+          <span className="material-symbols-outlined text-lg">{toast.type === 'success' ? 'check_circle' : 'error'}</span>
+          {toast.msg}
+        </div>
+      )}
       <div className="relative flex h-auto min-h-screen w-full flex-col overflow-x-hidden">
         <div className="layout-container flex h-full grow flex-col">
           {/* Top Navigation Bar */}
@@ -274,23 +309,55 @@ export default function Cart() {
                         <span>Phí vận chuyển</span>
                         <span className="font-medium text-slate-900 dark:text-slate-100">Miễn phí</span>
                       </div>
+                      {discountInfo && (
+                        <div className="flex justify-between text-red-500 text-sm font-medium">
+                          <span>Giảm giá ({discountInfo.promo_code})</span>
+                          <span>-{formatPrice(discountInfo.discount_amount)}</span>
+                        </div>
+                      )}
                       <div className="h-[1px] bg-slate-100 dark:bg-slate-800 w-full my-2"></div>
                       <div className="flex justify-between items-center pt-2">
                         <span className="text-lg font-bold">Tổng cộng</span>
-                        <span className="text-2xl font-bold text-primary">{formatPrice(total)}</span>
+                        <span className="text-2xl font-bold text-primary">{formatPrice(total - (discountInfo?.discount_amount || 0))}</span>
                       </div>
                     </div>
                     <div className="mb-6">
                       <label className="block text-xs font-bold uppercase text-slate-500 mb-2 tracking-wider">Mã giảm giá</label>
                       <div className="flex gap-2">
-                        <input className="flex-1 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-primary focus:border-primary" placeholder="Nhập mã" type="text" />
-                        <button className="bg-primary/10 text-primary px-4 py-2 rounded-lg font-bold text-sm hover:bg-primary/20 transition-all">Áp dụng</button>
+                        <input 
+                          className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:ring-primary focus:border-primary outline-none transition-all uppercase" 
+                          placeholder="Nhập mã" 
+                          type="text" 
+                          value={promoCode}
+                          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                        />
+                        <button 
+                          onClick={handleApplyPromo}
+                          disabled={checkingPromo || !promoCode.trim()}
+                          className="bg-primary/10 text-primary px-4 py-2 rounded-lg font-bold text-sm hover:bg-primary/20 transition-all disabled:opacity-50"
+                        >
+                          {checkingPromo ? '...' : 'Áp dụng'}
+                        </button>
                       </div>
+                      {discountInfo && (
+                        <button 
+                          onClick={() => {
+                            setDiscountInfo(null);
+                            setPromoCode('');
+                          }}
+                          className="mt-2 text-[10px] text-red-500 font-bold hover:underline"
+                        >
+                          Gỡ bỏ mã giảm giá
+                        </button>
+                      )}
                     </div>
-                    <Link to="/checkout" className="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3">
+                    <button 
+                      onClick={() => navigate('/checkout', { state: { promoCode: discountInfo?.promo_code } })}
+                      className="w-full bg-primary text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                    >
                       Tiến hành thanh toán
                       <span className="material-symbols-outlined">arrow_forward</span>
-                    </Link>
+                    </button>
                     <div className="mt-6 flex flex-col gap-3">
                       <div className="flex items-center gap-3 text-xs text-slate-500">
                         <span className="material-symbols-outlined text-primary text-lg">verified_user</span>

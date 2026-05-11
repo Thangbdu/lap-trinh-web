@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import api from '../utils/api';
+import api, { getImageUrl } from '../utils/api';
 
 interface UserProfile {
   user_id: number;
@@ -46,7 +46,10 @@ function ProfileContent() {
   const [loadingProfile, setLoadingProfile] = useState(true);
 
   // Tab state — mở tab từ navigation state nếu có
-  const [activeTab, setActiveTab] = useState<'info' | 'password' | 'address'>(initialTab === 'address' ? 'address' : 'info');
+  const [activeTab, setActiveTab] = useState<'info' | 'password' | 'address' | 'wishlist'>(initialTab === 'address' ? 'address' : initialTab === 'wishlist' ? 'wishlist' : 'info');
+
+  const [wishlist, setWishlist] = useState<any[]>([]);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   // Form chỉnh sửa thông tin
   const [editForm, setEditForm] = useState({ full_name: '', phone: '' });
@@ -94,6 +97,23 @@ function ProfileContent() {
   };
 
   useEffect(() => { if (activeTab === 'address') loadAddresses(); }, [activeTab]);
+
+  const loadWishlist = async () => {
+    setWishlistLoading(true);
+    try {
+      const res = await api.get<any[]>('/wishlist');
+      if (res.success && res.data) setWishlist(res.data);
+    } finally { setWishlistLoading(false); }
+  };
+
+  useEffect(() => { if (activeTab === 'wishlist') loadWishlist(); }, [activeTab]);
+
+  const handleRemoveWishlist = async (id: number) => {
+    try {
+      await api.delete(`/wishlist/${id}`);
+      setWishlist(prev => prev.filter(p => p.product_id !== id));
+    } catch (err: any) { alert(err.message); }
+  };
 
   // Lưu thông tin
   const handleSaveInfo = async (e: React.FormEvent) => {
@@ -179,6 +199,7 @@ function ProfileContent() {
     { key: 'info', icon: 'person_edit', label: 'Chỉnh sửa hồ sơ' },
     { key: 'password', icon: 'lock_reset', label: 'Đổi mật khẩu' },
     { key: 'address', icon: 'location_on', label: 'Địa chỉ' },
+    { key: 'wishlist', icon: 'favorite', label: 'Yêu thích' },
   ] as const;
 
   return (
@@ -458,6 +479,47 @@ function ProfileContent() {
                     )}
                   </div>
                 )}
+
+                {/* ─── TAB: Yêu thích ─── */}
+                {activeTab === 'wishlist' && (
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-base font-bold text-white">Sản phẩm yêu thích</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">Các sản phẩm bạn đã lưu để xem sau</p>
+                    </div>
+
+                    {wishlistLoading ? (
+                      <div className="text-center py-8"><Spinner /><p className="text-slate-500 text-sm mt-2">Đang tải...</p></div>
+                    ) : wishlist.length === 0 ? (
+                      <div className="text-center py-10 border-2 border-dashed border-slate-700 rounded-2xl">
+                        <span className="material-symbols-outlined text-4xl text-slate-600 block mb-2">heart_broken</span>
+                        <p className="text-slate-500 text-sm">Danh sách yêu thích trống.</p>
+                        <Link to="/" className="text-purple-400 text-xs mt-2 inline-block hover:underline">Quay lại mua sắm ngay!</Link>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3">
+                        {wishlist.map(p => (
+                          <div key={p.product_id} className="flex items-center gap-4 p-3 bg-slate-800/40 border border-slate-700 rounded-2xl group hover:border-purple-500/50 transition-all">
+                            <div className="w-16 h-16 bg-white rounded-xl flex items-center justify-center p-2 shrink-0">
+                              <img src={getImageUrl(p.thumbnail_url) || getImageUrl(p.primary_image) || ''} alt={p.product_name} className="w-full h-full object-contain" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <Link to={`/product/${p.product_id}`} className="font-bold text-sm text-white truncate block hover:text-purple-400 transition-colors">{p.product_name}</Link>
+                              <p className="text-purple-400 font-bold text-xs mt-0.5">{new Intl.NumberFormat('vi-VN').format(p.price)}đ</p>
+                            </div>
+                            <button
+                              onClick={() => handleRemoveWishlist(p.product_id)}
+                              className="p-2 text-slate-500 hover:text-red-400 transition-colors"
+                              title="Xóa khỏi yêu thích"
+                            >
+                              <span className="material-symbols-outlined">delete</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -467,15 +529,23 @@ function ProfileContent() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { to: '/order-history', icon: 'receipt_long', label: 'Đơn hàng', color: 'text-blue-400' },
-            { to: '/wishlist', icon: 'favorite', label: 'Yêu thích', color: 'text-red-400' },
+            { onClick: () => setActiveTab('wishlist'), icon: 'favorite', label: 'Yêu thích', color: 'text-red-400' },
             { to: '/cart', icon: 'shopping_cart', label: 'Giỏ hàng', color: 'text-purple-400' },
             { to: '/', icon: 'store', label: 'Mua sắm', color: 'text-green-400' },
-          ].map(item => (
-            <Link key={item.to} to={item.to}
-              className="flex flex-col items-center gap-2 p-4 bg-slate-900 rounded-2xl border border-slate-800 hover:border-purple-700/60 hover:bg-slate-800 transition-all group">
-              <span className={`material-symbols-outlined text-2xl ${item.color} group-hover:scale-110 transition-transform`}>{item.icon}</span>
-              <span className="text-xs font-semibold text-slate-300">{item.label}</span>
-            </Link>
+          ].map((item, idx) => (
+            item.to ? (
+              <Link key={idx} to={item.to}
+                className="flex flex-col items-center gap-2 p-4 bg-slate-900 rounded-2xl border border-slate-800 hover:border-purple-700/60 hover:bg-slate-800 transition-all group">
+                <span className={`material-symbols-outlined text-2xl ${item.color} group-hover:scale-110 transition-transform`}>{item.icon}</span>
+                <span className="text-xs font-semibold text-slate-300">{item.label}</span>
+              </Link>
+            ) : (
+              <button key={idx} onClick={item.onClick}
+                className="flex flex-col items-center gap-2 p-4 bg-slate-900 rounded-2xl border border-slate-800 hover:border-purple-700/60 hover:bg-slate-800 transition-all group">
+                <span className={`material-symbols-outlined text-2xl ${item.color} group-hover:scale-110 transition-transform`}>{item.icon}</span>
+                <span className="text-xs font-semibold text-slate-300">{item.label}</span>
+              </button>
+            )
           ))}
         </div>
       </main>

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api, { getImageUrl } from '../utils/api';
+import AIChatAssistant from '../components/AIChatAssistant';
 
 interface Product {
   product_id: number;
@@ -31,9 +32,11 @@ interface ProductCardProps {
   formatPrice: (n: number) => string;
   onQuickView: (id: number) => void;
   handleBuyNow: (id: number) => void;
+  isWishlisted: boolean;
+  onToggleWishlist: (id: number) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ p, addingId, addToCart, formatPrice, onQuickView, handleBuyNow }) => {
+const ProductCard: React.FC<ProductCardProps> = ({ p, addingId, addToCart, formatPrice, onQuickView, handleBuyNow, isWishlisted, onToggleWishlist }) => {
   return (
     <div className="group bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 relative">
       {/* Image area — click opens quick view */}
@@ -62,6 +65,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ p, addingId, addToCart, forma
         {p.is_featured ? (
           <div className="absolute top-2 right-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">New</div>
         ) : null}
+        {/* Wishlist Button */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleWishlist(p.product_id); }}
+          className={`absolute top-2 right-2 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all ${isWishlisted ? 'bg-red-500 text-white shadow-lg' : 'bg-white/80 text-slate-400 hover:text-red-500 hover:bg-white shadow-sm'}`}
+          title={isWishlisted ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'}
+        >
+          <span className={`material-symbols-outlined text-lg ${isWishlisted ? 'fill-1' : ''}`}>favorite</span>
+        </button>
         {/* Quick view overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
           <span className="bg-white/90 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1 translate-y-2 group-hover:translate-y-0 transition-transform duration-200">
@@ -86,7 +97,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ p, addingId, addToCart, forma
             <span className="text-slate-400 line-through text-xs">{formatPrice(p.old_price)}</span>
           )}
         </div>
-        
+
         <div className="grid grid-cols-2 gap-2 mt-2">
           <button
             onClick={(e) => { e.stopPropagation(); addToCart(p.product_id); }}
@@ -95,7 +106,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ p, addingId, addToCart, forma
             title="Thêm vào giỏ"
           >
             {addingId === p.product_id ? (
-               <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
             ) : p.stock_quantity === 0 ? 'Hết hàng' : (
               <><span className="material-symbols-outlined text-base">add_shopping_cart</span></>
             )}
@@ -184,7 +195,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ productId, onClose, add
     setActiveImg(null);
     api.get<ProductDetail>(`/products/${productId}`)
       .then(res => { if (res.success && res.data) setDetail(res.data); })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, [productId]);
 
@@ -312,7 +323,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ productId, onClose, add
                   {/* Rating */}
                   <div className="flex items-center gap-2 mt-2">
                     <div className="flex text-yellow-400">
-                      {[1,2,3,4,5].map(i => (
+                      {[1, 2, 3, 4, 5].map(i => (
                         <span key={i} className={`material-symbols-outlined text-sm ${i <= Math.round(Number(avgRating)) ? 'fill-1' : 'text-slate-300'}`}>star</span>
                       ))}
                     </div>
@@ -392,11 +403,11 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ productId, onClose, add
         {detail && (
           <div className="flex flex-wrap gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex-shrink-0 bg-white dark:bg-slate-900">
             <button
-               onClick={() => { handleBuyNow(detail.product_id); }}
-               disabled={addingId === detail.product_id || detail.stock_quantity === 0}
-               className="flex-[2] bg-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 text-sm shadow-lg shadow-primary/20"
+              onClick={() => { handleBuyNow(detail.product_id); }}
+              disabled={addingId === detail.product_id || detail.stock_quantity === 0}
+              className="flex-[2] bg-primary text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 text-sm shadow-lg shadow-primary/20"
             >
-               <span className="material-symbols-outlined">bolt</span> Mua ngay
+              <span className="material-symbols-outlined">bolt</span> Mua ngay
             </button>
             <button
               onClick={() => { addToCart(detail.product_id); }}
@@ -405,7 +416,7 @@ const QuickViewModal: React.FC<QuickViewModalProps> = ({ productId, onClose, add
             >
               {addingId === detail.product_id ? '...'
                 : detail.stock_quantity === 0 ? 'Hết'
-                : <><span className="material-symbols-outlined">add_shopping_cart</span> Giỏ hàng</>
+                  : <><span className="material-symbols-outlined">add_shopping_cart</span> Giỏ hàng</>
               }
             </button>
             <Link
@@ -499,6 +510,8 @@ export default function Home() {
   const handleQuickView = useCallback((id: number) => setQuickViewId(id), []);
   const handleCloseModal = useCallback(() => setQuickViewId(null), []);
 
+  const [wishlistIds, setWishlistIds] = useState<number[]>([]);
+
   // Auto-slide mỗi 4 giưy
   const startSlideTimer = () => {
     if (slideTimer.current) clearInterval(slideTimer.current);
@@ -555,6 +568,39 @@ export default function Home() {
     fetchProducts();
   }, []);
 
+  const fetchWishlist = async () => {
+    if (!isAuthenticated) return;
+    try {
+      const res = await api.get<{ product_id: number }[]>('/wishlist');
+      if (res.success && res.data) {
+        setWishlistIds(res.data.map(i => i.product_id));
+      }
+    } catch { }
+  };
+
+  const toggleWishlist = async (productId: number) => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    const isAdded = wishlistIds.includes(productId);
+    try {
+      if (isAdded) {
+        await api.delete(`/wishlist/${productId}`);
+        setWishlistIds(prev => prev.filter(id => id !== productId));
+        setToast('Đã xóa khỏi danh sách yêu thích');
+      } else {
+        await api.post('/wishlist', { product_id: productId });
+        setWishlistIds(prev => [...prev, productId]);
+        setToast('❤️ Đã thêm vào yêu thích!');
+      }
+      setTimeout(() => setToast(null), 2000);
+    } catch (err: any) {
+      setToast(err.message || 'Lỗi xử lý yêu thích');
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
   // Lấy số lượng giỏ hàng
   const fetchCartCount = async () => {
     try {
@@ -570,8 +616,10 @@ export default function Home() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchCartCount();
+      fetchWishlist();
     } else {
       setCartCount(0);
+      setWishlistIds([]);
     }
   }, [isAuthenticated]);
 
@@ -741,13 +789,14 @@ export default function Home() {
                   </h2>
                   <p className="text-slate-400 text-base leading-relaxed">{ad.desc}</p>
                   <div className="flex flex-wrap gap-3 pt-2">
-                    <Link
-                      to={ad.link}
-                      className="px-7 py-3 rounded-xl font-bold text-white transition-all hover:scale-105 shadow-lg"
+                    <button
+                      onClick={() => handleBuyNow(ad.id)}
+                      className="px-8 py-3 rounded-xl font-bold text-white transition-all hover:scale-105 shadow-lg flex items-center gap-2"
                       style={{ background: ad.accent }}
                     >
+                      <span className="material-symbols-outlined">bolt</span>
                       Mua ngay
-                    </Link>
+                    </button>
                     <Link
                       to={ad.link}
                       className="px-7 py-3 rounded-xl font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm transition-all"
@@ -834,7 +883,7 @@ export default function Home() {
         </section>
         {/* ─── Section 1: SP MỚI NHẤT (featured) ─── */}
         {!searchQuery && !selectedKey && (
-          <section className="mb-16">
+          <section id="latest-products" className="mb-16">
             <div className="flex items-center gap-4 mb-8">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">🔥</span>
@@ -854,14 +903,16 @@ export default function Home() {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
                 {products.filter(p => p.is_featured).map((p) => (
-                  <ProductCard 
-                    key={p.product_id} 
-                    p={p} 
-                    addingId={addingId} 
-                    addToCart={addToCart} 
+                  <ProductCard
+                    key={p.product_id}
+                    p={p}
+                    addingId={addingId}
+                    addToCart={addToCart}
                     handleBuyNow={handleBuyNow}
-                    formatPrice={formatPrice} 
-                    onQuickView={handleQuickView} 
+                    formatPrice={formatPrice}
+                    onQuickView={handleQuickView}
+                    isWishlisted={wishlistIds.includes(p.product_id)}
+                    onToggleWishlist={toggleWishlist}
                   />
                 ))}
               </div>
@@ -912,6 +963,8 @@ export default function Home() {
                   handleBuyNow={handleBuyNow}
                   formatPrice={formatPrice}
                   onQuickView={handleQuickView}
+                  isWishlisted={wishlistIds.includes(p.product_id)}
+                  onToggleWishlist={toggleWishlist}
                 />
               ))}
             </div>
@@ -1020,6 +1073,7 @@ export default function Home() {
         handleBuyNow={handleBuyNow}
         formatPrice={formatPrice}
       />
+      <AIChatAssistant />
     </div>
   );
 }

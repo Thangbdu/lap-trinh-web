@@ -12,6 +12,8 @@ interface OrderItem {
 
 interface Order {
   order_id: number;
+  total_amount: number;
+  discount_amount: number;
   final_amount: number;
   payment_method: string;
   items: OrderItem[];
@@ -207,9 +209,23 @@ export default function PaymentGateway() {
                 ))}
               </div>
 
-              <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                 <span className="text-slate-500 font-medium">Tổng số tiền cần thanh toán:</span>
-                 <span className="text-3xl font-black text-primary">{formatPrice(order.final_amount)}</span>
+              <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                 {order.discount_amount > 0 && (
+                   <div className="flex justify-between items-center text-sm">
+                     <span className="text-slate-500">Tạm tính:</span>
+                     <span className="font-medium text-slate-700 dark:text-slate-300">{formatPrice(Number(order.total_amount))}</span>
+                   </div>
+                 )}
+                 {order.discount_amount > 0 && (
+                   <div className="flex justify-between items-center text-sm">
+                     <span className="text-slate-500">Giảm giá:</span>
+                     <span className="font-bold text-red-500">-{formatPrice(Number(order.discount_amount))}</span>
+                   </div>
+                 )}
+                 <div className="flex justify-between items-center pt-2">
+                    <span className="text-slate-900 dark:text-white font-bold">Tổng thanh toán:</span>
+                    <span className="text-3xl font-black text-primary">{formatPrice(Number(order.final_amount))}</span>
+                 </div>
               </div>
             </div>
 

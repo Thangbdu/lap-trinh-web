@@ -93,9 +93,9 @@ exports.createOrder = async (req, res) => {
       );
     }
 
-    // Tạo payment record
+    // Tạo payment record với trạng thái 'Chờ phê duyệt' ngay khi đặt hàng
     await connection.query(
-      'INSERT INTO payments (order_id, payment_method, amount) VALUES (?, ?, ?)',
+      "INSERT INTO payments (order_id, payment_method, amount, payment_status) VALUES (?, ?, ?, 'Chờ phê duyệt')",
       [order_id, req.body.payment_method || 'COD', final_amount]
     );
 
@@ -304,7 +304,7 @@ exports.getPendingPayments = async (req, res) => {
        FROM payments p
        JOIN orders o ON p.order_id = o.order_id
        JOIN users u ON o.user_id = u.user_id
-       WHERE p.payment_status = 'Chờ phê duyệt' AND p.payment_method != 'COD'
+       WHERE p.payment_status = 'Chờ phê duyệt'
        ORDER BY p.created_at DESC`
     );
     res.json({ success: true, data: payments });

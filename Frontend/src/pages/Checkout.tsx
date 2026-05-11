@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api, { getImageUrl } from '../utils/api';
 
@@ -31,6 +31,8 @@ interface Address {
 export default function Checkout() {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const initialPromo = location.state?.promoCode || '';
 
   const [cart, setCart] = useState<CartData | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -41,7 +43,7 @@ export default function Checkout() {
   // Form fields
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'Chuyển khoản' | 'Momo' | 'ZaloPay' | 'Thẻ Tín Dụng'>('COD');
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
-  const [promoCode, setPromoCode] = useState('');
+  const [promoCode, setPromoCode] = useState(initialPromo);
   const [discountInfo, setDiscountInfo] = useState<{ promo_code: string; discount_amount: number } | null>(null);
   const [checkingPromo, setCheckingPromo] = useState(false);
 
@@ -68,6 +70,13 @@ export default function Checkout() {
 
   const items = cart?.items || [];
   const subtotal = cart?.total || 0;
+
+  // Tự động kiểm tra mã nếu có từ trang giỏ hàng
+  useEffect(() => {
+    if (initialPromo && subtotal > 0 && !discountInfo) {
+      handleApplyPromo();
+    }
+  }, [subtotal, initialPromo]);
 
   // Kiểm tra mã giảm giá
   const handleApplyPromo = async () => {
@@ -291,46 +300,96 @@ export default function Checkout() {
                 </div>
               </section>
 
-              {/* Mã giảm giá */}
-              <section className="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="material-symbols-outlined text-primary">local_offer</span>
-                  <h2 className="text-lg font-bold">Mã giảm giá</h2>
+              {/* Mã giảm giá - Tối ưu giao diện Premium */}
+              <section className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110"></div>
+                
+                <div className="flex items-center justify-between mb-6 relative">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                      <span className="material-symbols-outlined block text-xl">local_offer</span>
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">Mã giảm giá</h2>
+                      <p className="text-xs text-slate-500">Áp dụng cho mọi phương thức thanh toán</p>
+                    </div>
+                  </div>
+                  {discountInfo && (
+                    <span className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[10px] font-bold px-2 py-1 rounded-full animate-pulse">
+                      ĐÃ ÁP DỤNG
+                    </span>
+                  )}
                 </div>
-                <div className="flex gap-3">
-                  <input
-                    className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
-                    placeholder="Nhập mã giảm giá..."
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                  />
-                  <button 
-                    onClick={handleApplyPromo}
-                    disabled={checkingPromo || !promoCode.trim()}
-                    className="bg-primary/10 text-primary px-5 py-2.5 rounded-lg font-bold text-sm hover:bg-primary/20 transition-all disabled:opacity-50"
-                  >
-                    {checkingPromo ? '...' : 'Áp dụng'}
-                  </button>
-                </div>
-                {discountInfo && (
-                  <div className="mt-2 flex items-center justify-between bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg border border-green-100 dark:border-green-800">
-                    <p className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">check_circle</span>
-                      Mã <b>{discountInfo.promo_code}</b> đã áp dụng.
-                    </p>
+
+                <div className="relative">
+                  <div className="flex gap-3">
+                    <div className="relative flex-1">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg">confirmation_number</span>
+                      <input
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-11 pr-4 py-3.5 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all font-medium uppercase tracking-wider"
+                        placeholder="NHẬP MÃ GIẢM GIÁ (VÍ DỤ: GIAM10)"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                      />
+                    </div>
                     <button 
-                      onClick={() => {
-                        setDiscountInfo(null);
-                        setPromoCode('');
-                        setToast({ msg: 'Đã gỡ mã giảm giá.', type: 'success' });
-                        setTimeout(() => setToast(null), 3000);
-                      }}
-                      className="text-xs text-red-500 hover:underline font-bold"
+                      onClick={handleApplyPromo}
+                      disabled={checkingPromo || !promoCode.trim()}
+                      className="bg-primary text-white px-8 py-3.5 rounded-xl font-bold text-sm hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-primary/20 flex items-center gap-2"
                     >
-                      Gỡ bỏ
+                      {checkingPromo ? (
+                        <div className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      ) : (
+                        'ÁP DỤNG'
+                      )}
                     </button>
                   </div>
-                )}
+
+                  {/* Hiển thị thông tin giảm giá khi đã áp dụng thành công */}
+                  {discountInfo && (
+                    <div className="mt-5 p-4 rounded-2xl bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 border border-green-100 dark:border-green-800/50 flex items-center justify-between animate-fadeIn">
+                      <div className="flex items-center gap-4">
+                        <div className="size-12 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center shadow-sm border border-green-100 dark:border-green-800">
+                          <span className="material-symbols-outlined text-green-500">check_circle</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Mã: {discountInfo.promo_code}</p>
+                          <p className="text-xs text-green-600 dark:text-green-400 font-medium">Bạn được giảm thêm {formatPrice(discountInfo.discount_amount)}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setDiscountInfo(null);
+                          setPromoCode('');
+                          setToast({ msg: 'Đã gỡ mã giảm giá.', type: 'success' });
+                          setTimeout(() => setToast(null), 3000);
+                        }}
+                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-400 hover:text-red-600 rounded-lg transition-colors group/del"
+                        title="Gỡ bỏ mã"
+                      >
+                        <span className="material-symbols-outlined text-lg">delete</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Một số mã gợi ý (Mockup để trông premium hơn) */}
+                  {!discountInfo && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest w-full mb-1">Gợi ý mã:</span>
+                      {['CHAOBAN', 'MOBILE2024', 'FREESHIP'].map(code => (
+                        <button 
+                          key={code}
+                          onClick={() => {
+                            setPromoCode(code);
+                          }}
+                          className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-500 hover:border-primary hover:text-primary transition-all bg-white dark:bg-slate-800 shadow-sm"
+                        >
+                          #{code}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </section>
             </div>
 
