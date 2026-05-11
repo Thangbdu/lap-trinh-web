@@ -65,14 +65,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ p, addingId, addToCart, forma
         {p.is_featured ? (
           <div className="absolute top-2 right-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">New</div>
         ) : null}
-        {/* Wishlist Button */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleWishlist(p.product_id); }}
-          className={`absolute top-2 right-2 z-20 w-8 h-8 rounded-full flex items-center justify-center transition-all ${isWishlisted ? 'bg-red-500 text-white shadow-lg' : 'bg-white/80 text-slate-400 hover:text-red-500 hover:bg-white shadow-sm'}`}
-          title={isWishlisted ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'}
-        >
-          <span className={`material-symbols-outlined text-lg ${isWishlisted ? 'fill-1' : ''}`}>favorite</span>
-        </button>
         {/* Quick view overlay */}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
           <span className="bg-white/90 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1 translate-y-2 group-hover:translate-y-0 transition-transform duration-200">
@@ -80,6 +72,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ p, addingId, addToCart, forma
           </span>
         </div>
       </button>
+
       <div className="p-3 space-y-1.5">
         {p.brand_name && (
           <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{p.brand_name}</span>
@@ -98,23 +91,35 @@ const ProductCard: React.FC<ProductCardProps> = ({ p, addingId, addToCart, forma
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2 mt-2">
+        <div className="flex items-center gap-1.5 mt-2">
+          {/* Wishlist Button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleWishlist(p.product_id); }}
+            className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center transition-all ${isWishlisted ? 'bg-red-500 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-700 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 shadow-sm'}`}
+            title={isWishlisted ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'}
+          >
+            <span className={`material-symbols-outlined text-lg ${isWishlisted ? 'fill-1' : ''}`}>favorite</span>
+          </button>
+
+          {/* Add to Cart button */}
           <button
             onClick={(e) => { e.stopPropagation(); addToCart(p.product_id); }}
             disabled={addingId === p.product_id || p.stock_quantity === 0}
-            className="bg-primary/5 hover:bg-primary hover:text-white text-primary py-2.5 rounded-xl font-bold text-[10px] transition-all duration-200 flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="flex-1 bg-primary/10 hover:bg-primary hover:text-white text-primary h-9 rounded-xl font-bold text-[10px] transition-all duration-200 flex items-center justify-center gap-1.5 disabled:opacity-50"
             title="Thêm vào giỏ"
           >
             {addingId === p.product_id ? (
               <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
             ) : p.stock_quantity === 0 ? 'Hết hàng' : (
-              <><span className="material-symbols-outlined text-base">add_shopping_cart</span></>
+              <span className="material-symbols-outlined text-base">add_shopping_cart</span>
             )}
           </button>
+
+          {/* Buy Now button */}
           <button
             onClick={(e) => { e.stopPropagation(); handleBuyNow(p.product_id); }}
             disabled={addingId === p.product_id || p.stock_quantity === 0}
-            className="bg-primary text-white py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-50 shadow-sm"
+            className="flex-[1.5] bg-primary text-white h-9 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-50 shadow-sm"
           >
             Mua ngay
           </button>
