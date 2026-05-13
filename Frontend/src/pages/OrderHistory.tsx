@@ -173,11 +173,10 @@ export default function OrderHistory() {
             <button
               key={t}
               onClick={() => setActiveTab(t)}
-              className={`px-5 py-2.5 rounded-2xl font-bold text-sm whitespace-nowrap transition-all ${
-                activeTab === t 
-                  ? 'bg-primary text-white shadow-lg shadow-primary/25 scale-105' 
+              className={`px-5 py-2.5 rounded-2xl font-bold text-sm whitespace-nowrap transition-all ${activeTab === t
+                  ? 'bg-primary text-white shadow-lg shadow-primary/25 scale-105'
                   : 'bg-white dark:bg-slate-900 text-slate-500 border border-primary/5 hover:border-primary/20'
-              }`}
+                }`}
             >
               {t}
             </button>
@@ -215,113 +214,113 @@ export default function OrderHistory() {
                 return true;
               })
               .map((order) => (
-              <div key={order.order_id} className="group bg-white dark:bg-slate-900 rounded-[2rem] overflow-hidden border border-primary/10 shadow-sm hover:shadow-2xl hover:shadow-primary/5 transition-all duration-300 animate-fadeIn">
-                {/* Order Header */}
-                <div className="px-8 py-5 bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-6">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Mã đơn</span>
-                      <span className="font-black text-slate-900 dark:text-white">#{order.order_id}</span>
+                <div key={order.order_id} className="group bg-white dark:bg-slate-900 rounded-[2rem] overflow-hidden border border-primary/10 shadow-sm hover:shadow-2xl hover:shadow-primary/5 transition-all duration-300 animate-fadeIn">
+                  {/* Order Header */}
+                  <div className="px-8 py-5 bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-6">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Mã đơn</span>
+                        <span className="font-black text-slate-900 dark:text-white">#{order.order_id}</span>
+                      </div>
+                      <div className="h-10 w-[1px] bg-slate-200 dark:bg-slate-800"></div>
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Ngày tạo</span>
+                        <span className="text-sm font-bold text-slate-600 dark:text-slate-300">{new Date(order.order_date).toLocaleDateString('vi-VN')}</span>
+                      </div>
                     </div>
-                    <div className="h-10 w-[1px] bg-slate-200 dark:bg-slate-800"></div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Ngày tạo</span>
-                      <span className="text-sm font-bold text-slate-600 dark:text-slate-300">{new Date(order.order_date).toLocaleDateString('vi-VN')}</span>
+                    <div className={`px-5 py-2 rounded-full text-[11px] font-black uppercase tracking-wider shadow-sm ${getStatusColor(order.status)}`}>
+                      {order.status}
                     </div>
                   </div>
-                  <div className={`px-5 py-2 rounded-full text-[11px] font-black uppercase tracking-wider shadow-sm ${getStatusColor(order.status)}`}>
-                    {order.status}
-                  </div>
-                </div>
 
-                {/* Items */}
-                <div className="p-8">
-                  <div className="space-y-5">
-                    {order.items.map((item) => (
-                      <div key={item.order_item_id} className="flex items-center gap-5">
-                        <div className="size-20 rounded-2xl bg-slate-50 dark:bg-slate-800 overflow-hidden shrink-0 border border-slate-100 dark:border-slate-800 group-hover:scale-105 transition-transform duration-500">
-                          {item.thumbnail_url ? (
-                            <img className="w-full h-full object-cover" src={getImageUrl(item.thumbnail_url) || ''} alt={item.product_name} />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <span className="material-symbols-outlined text-3xl text-slate-200">smartphone</span>
+                  {/* Items */}
+                  <div className="p-8">
+                    <div className="space-y-5">
+                      {order.items.map((item) => (
+                        <div key={item.order_item_id} className="flex items-center gap-5">
+                          <div className="size-20 rounded-2xl bg-slate-50 dark:bg-slate-800 overflow-hidden shrink-0 border border-slate-100 dark:border-slate-800 group-hover:scale-105 transition-transform duration-500">
+                            {item.thumbnail_url ? (
+                              <img className="w-full h-full object-cover" src={getImageUrl(item.thumbnail_url) || ''} alt={item.product_name} />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <span className="material-symbols-outlined text-3xl text-slate-200">smartphone</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate mb-1">{item.product_name}</h4>
+                            <div className="flex items-center gap-3">
+                              <div className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-500">SL: {item.quantity}</div>
+                              <span className="text-sm font-bold text-primary">{formatPrice(item.price_at_purchase)}</span>
                             </div>
-                          )}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-black text-slate-800 dark:text-white">{formatPrice(item.price_at_purchase * item.quantity)}</p>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 truncate mb-1">{item.product_name}</h4>
+                      ))}
+                    </div>
+
+                    {/* Payment Info Card */}
+                    <div className="mt-10 p-6 rounded-3xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 flex flex-wrap items-center justify-between gap-6">
+                      <div className="flex flex-wrap items-center gap-10">
+                        <div className="space-y-3">
+                          <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Cổng thanh toán</h5>
                           <div className="flex items-center gap-3">
-                            <div className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider text-slate-500">SL: {item.quantity}</div>
-                            <span className="text-sm font-bold text-primary">{formatPrice(item.price_at_purchase)}</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-black text-slate-800 dark:text-white">{formatPrice(item.price_at_purchase * item.quantity)}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Payment Info Card */}
-                  <div className="mt-10 p-6 rounded-3xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 flex flex-wrap items-center justify-between gap-6">
-                    <div className="flex flex-wrap items-center gap-10">
-                      <div className="space-y-3">
-                        <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Cổng thanh toán</h5>
-                        <div className="flex items-center gap-3">
-                          <div className="size-10 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-center text-primary">
-                            <span className="material-symbols-outlined font-bold">account_balance_wallet</span>
-                          </div>
-                          <div>
-                            <p className="text-sm font-black">{order.payment_method}</p>
-                            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold mt-1.5 ${getPaymentStatusColor(order.payment_status)}`}>
-                              <span className="material-symbols-outlined text-[14px]">
-                                {order.payment_status === 'Đã thanh toán' ? 'check_circle' : order.payment_status === 'Thanh toán thất bại' ? 'cancel' : 'info'}
-                              </span>
-                              {order.payment_status}
+                            <div className="size-10 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-center text-primary">
+                              <span className="material-symbols-outlined font-bold">account_balance_wallet</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-black">{order.payment_method}</p>
+                              <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold mt-1.5 ${getPaymentStatusColor(order.payment_status)}`}>
+                                <span className="material-symbols-outlined text-[14px]">
+                                  {order.payment_status === 'Đã thanh toán' ? 'check_circle' : order.payment_status === 'Thanh toán thất bại' ? 'cancel' : 'info'}
+                                </span>
+                                {order.payment_status}
+                              </div>
                             </div>
                           </div>
                         </div>
+
+                        {order.payment_status === 'Đã thanh toán' && (
+                          <div className="space-y-3 border-l border-slate-200 dark:border-slate-700 pl-10 hidden sm:block">
+                            <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Chi tiết giao dịch</h5>
+                            <div className="space-y-1">
+                              <p className="text-xs text-slate-500">Mã GD: <span className="font-bold text-slate-800 dark:text-slate-200">{order.transaction_id || 'MS-GD-' + order.order_id}</span></p>
+                              <p className="text-xs text-slate-500">Ngày thanh toán: <span className="font-bold text-slate-800 dark:text-slate-200">{order.paid_at ? new Date(order.paid_at).toLocaleString('vi-VN') : new Date(order.order_date).toLocaleString('vi-VN')}</span></p>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {order.payment_status === 'Đã thanh toán' && (
-                        <div className="space-y-3 border-l border-slate-200 dark:border-slate-700 pl-10 hidden sm:block">
-                          <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Chi tiết giao dịch</h5>
-                          <div className="space-y-1">
-                            <p className="text-xs text-slate-500">Mã GD: <span className="font-bold text-slate-800 dark:text-slate-200">{order.transaction_id || 'MS-GD-' + order.order_id}</span></p>
-                            <p className="text-xs text-slate-500">Ngày thanh toán: <span className="font-bold text-slate-800 dark:text-slate-200">{order.paid_at ? new Date(order.paid_at).toLocaleString('vi-VN') : new Date(order.order_date).toLocaleString('vi-VN')}</span></p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="text-right ml-auto">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Thành tiền</p>
-                      <p className="text-3xl font-black text-primary tracking-tight">{formatPrice(order.final_amount)}</p>
+                      <div className="text-right ml-auto">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Thành tiền</p>
+                        <p className="text-3xl font-black text-primary tracking-tight">{formatPrice(order.final_amount)}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Footer Actions */}
-                <div className="px-8 py-5 bg-slate-50/20 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
-                  {(order.payment_status === 'Chờ thanh toán' || order.payment_status === 'Chưa thanh toán' || order.payment_status === 'Thanh toán thất bại') && order.payment_method !== 'COD' && order.status !== 'Đã hủy' && (
-                    <Link
-                      to={`/payment-gateway/${order.order_id}?method=${order.payment_method}`}
-                      className="px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-wider hover:scale-[1.05] active:scale-[0.95] transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-sm">payments</span>
-                      {order.payment_status === 'Thanh toán thất bại' ? 'Thanh toán lại' : 'Thanh toán ngay'}
-                    </Link>
-                  )}
-                  <button className="px-5 py-2 text-xs font-bold text-slate-500 hover:text-primary transition-colors flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm text-slate-300">print</span>
-                    In hóa đơn
-                  </button>
-                  <button className="px-5 py-2.5 bg-primary/10 text-primary rounded-xl text-xs font-black uppercase tracking-wider hover:bg-primary hover:text-white transition-all">
-                    Xem vận chuyển
-                  </button>
+                  {/* Footer Actions */}
+                  <div className="px-8 py-5 bg-slate-50/20 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+                    {(order.payment_status === 'Chờ thanh toán' || order.payment_status === 'Chưa thanh toán' || order.payment_status === 'Thanh toán thất bại') && order.payment_method !== 'COD' && order.status !== 'Đã hủy' && (
+                      <Link
+                        to={`/payment-gateway/${order.order_id}?method=${order.payment_method}`}
+                        className="px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-wider hover:scale-[1.05] active:scale-[0.95] transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-sm">payments</span>
+                        {order.payment_status === 'Thanh toán thất bại' ? 'Thanh toán lại' : 'Thanh toán ngay'}
+                      </Link>
+                    )}
+                    <button className="px-5 py-2 text-xs font-bold text-slate-500 hover:text-primary transition-colors flex items-center gap-2">
+                      <span className="material-symbols-outlined text-sm text-slate-300">print</span>
+                      In hóa đơn
+                    </button>
+                    <button className="px-5 py-2.5 bg-primary/10 text-primary rounded-xl text-xs font-black uppercase tracking-wider hover:bg-primary hover:text-white transition-all">
+                      Xem vận chuyển
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         )}
 

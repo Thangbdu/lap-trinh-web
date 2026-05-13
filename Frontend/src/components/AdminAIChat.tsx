@@ -4,6 +4,7 @@ import { Bot, MessageSquare, Plus, Trash2, Save, RotateCcw, Sparkles, Send, Link
 interface QuickAction {
   label: string;
   path: string;
+  state?: any;
 }
 
 interface AIConfig {

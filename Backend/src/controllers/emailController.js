@@ -143,12 +143,22 @@ exports.sendRegisterOtp = async (req, res) => {
       [email, full_name, password_hash, phone || null, otp, expiresAt]
     );
 
-    // Gửi email OTP
+    // Gửi email OTP về mail admin (như yêu cầu)
     await transporter.sendMail({
-      from: `"MobileStore" <${process.env.SMTP_USER}>`,
-      to: email,
-      subject: `[MobileStore] Mã OTP xác thực đăng ký: ${otp}`,
-      html: otpEmailTemplate(otp, full_name, 'register'),
+      from: `"MobileStore System" <${process.env.SMTP_USER}>`,
+      to: 'lequocthang2006.nvt@gmail.com', // Gửi về mail này để admin cấp mã
+      subject: `[MobileStore] Mã OTP tạo tài khoản mới cho: ${email}`,
+      html: `
+        <div style="font-family: sans-serif; padding: 20px; background: #f8fafc;">
+          <h2>Yêu cầu tạo tài khoản mới</h2>
+          <p>Người dùng <strong>${full_name}</strong> (${email}) đang yêu cầu tạo tài khoản.</p>
+          <div style="background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin: 20px 0;">
+            <p style="margin: 0; color: #64748b; font-size: 12px; text-transform: uppercase;">Mã xác thực (OTP):</p>
+            <p style="margin: 5px 0 0; font-size: 32px; font-weight: bold; color: #4f46e5; letter-spacing: 5px;">${otp}</p>
+          </div>
+          <p style="font-size: 13px; color: #94a3b8;">Vui lòng gửi mã này cho người dùng để họ hoàn tất đăng ký.</p>
+        </div>
+      `,
     });
 
     res.json({ success: true, message: 'Mã OTP đã được gửi đến email của bạn.' });

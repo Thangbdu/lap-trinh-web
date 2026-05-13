@@ -4,39 +4,12 @@ const jwt = require('jsonwebtoken');
 const { sendWelcomeEmail } = require('./emailController');
 require('dotenv').config();
 
-// Đăng ký
+// Đăng ký (Legacy - hiện tại dùng OTP flow qua emailController)
 exports.register = async (req, res) => {
-  try {
-    const { full_name, email, password, phone } = req.body;
-
-    // Kiểm tra email đã tồn tại
-    const [existing] = await pool.query('SELECT user_id FROM users WHERE email = ?', [email]);
-    if (existing.length > 0) {
-      return res.status(400).json({ success: false, message: 'Email đã được sử dụng.' });
-    }
-
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const password_hash = await bcrypt.hash(password, salt);
-
-    const [result] = await pool.query(
-      'INSERT INTO users (full_name, email, password_hash, phone) VALUES (?, ?, ?, ?)',
-      [full_name, email, password_hash, phone || null]
-    );
-
-    // Tạo cart cho user mới
-    await pool.query('INSERT INTO cart (user_id) VALUES (?)', [result.insertId]);
-
-    res.status(201).json({
-      success: true,
-      message: 'Đăng ký thành công!',
-      data: { user_id: result.insertId, full_name, email },
-    });
-    // Gửi email chào mừng (bất đồng bộ, không block response)
-    sendWelcomeEmail(email, full_name).catch(() => {});
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+  return res.status(400).json({ 
+    success: false, 
+    message: 'Vui lòng sử dụng luồng đăng ký qua mã OTP để bảo mật tài khoản.' 
+  });
 };
 
 // Đăng nhập

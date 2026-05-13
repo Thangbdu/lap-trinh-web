@@ -13,6 +13,7 @@ interface Message {
 interface QuickAction {
   label: string;
   path: string;
+  state?: any;
 }
 
 interface AIConfig {

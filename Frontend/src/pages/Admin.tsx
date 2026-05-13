@@ -455,6 +455,14 @@ export default function Admin() {
     } catch (e: any) { alert(e.message); }
   };
 
+  const updateUserRole = async (userId: number, role: string) => {
+    try {
+      await api.put(`/admin/users/${userId}/role`, { role });
+      showToast('Cập nhật quyền thành công!');
+      loadUsers();
+    } catch (e: any) { alert(e.message); }
+  };
+
   const approveMockPayment = async (paymentId: number) => {
     setApproving(paymentId);
     try {
@@ -931,9 +939,20 @@ export default function Admin() {
                       <td style={styles.td}><span style={{ color: '#94a3b8' }}>{u.email}</span></td>
                       <td style={styles.td}>{u.phone ?? '—'}</td>
                       <td style={styles.td}>
-                        <span style={{ ...styles.badge, background: u.role === 'admin' ? '#1e1b4b' : '#1e293b', color: u.role === 'admin' ? '#a5b4fc' : '#94a3b8' }}>
-                          {u.role === 'admin' ? '🛡️ Admin' : '👤 Khách'}
-                        </span>
+                        <select
+                          value={u.role}
+                          onChange={(e) => updateUserRole(u.user_id, e.target.value)}
+                          style={{
+                            ...styles.statusSelect,
+                            background: u.role === 'admin' ? '#312e81' : u.role === 'staff' ? '#1e3a5f' : '#334155',
+                            color: u.role === 'admin' ? '#a5b4fc' : u.role === 'staff' ? '#38bdf8' : '#94a3b8',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="customer">👤 Khách hàng</option>
+                          <option value="staff">👔 Nhân viên</option>
+                          <option value="admin">🛡️ Admin</option>
+                        </select>
                       </td>
                       <td style={styles.td}><span style={{ fontSize: 12, color: '#64748b' }}>{new Date(u.created_at).toLocaleDateString('vi-VN')}</span></td>
                       <td style={styles.td}>

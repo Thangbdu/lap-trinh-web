@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
 
 type Step = 'form' | 'otp';
@@ -27,7 +28,8 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { setUserFromOAuth } = useAuth() as any;
+  const { setUser } = useAuth();
+  const { showToast } = useToast();
 
   // Đếm ngược resend
   useEffect(() => {
@@ -50,7 +52,7 @@ export default function Register() {
       await api.post('/auth/send-register-otp', { full_name: fullName, email, password, phone: phone || undefined });
       setStep('otp');
       setCountdown(60);
-      setSuccess(`Mã OTP đã được gửi đến ${email}`);
+      setSuccess(`Yêu cầu đã được gửi. Vui lòng lấy mã OTP từ email quản trị: lequocthang2006.nvt@gmail.com`);
       setTimeout(() => otpRefs.current[0]?.focus(), 300);
     } catch (err: any) {
       setError(err.message || 'Gửi OTP thất bại. Vui lòng thử lại.');
@@ -71,7 +73,9 @@ export default function Register() {
       const userData = res.data?.data || res.data;
       const token = userData?.token;
       if (token) localStorage.setItem('token', token);
-      if (setUserFromOAuth) setUserFromOAuth(userData);
+      setUser(userData);
+      
+      showToast('Chúc mừng! Tài khoản của bạn đã được khởi tạo thành công.', 'success');
       
       // Điều hướng dựa trên role sau khi đăng ký
       if (userData.role === 'admin') {
