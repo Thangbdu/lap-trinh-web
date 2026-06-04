@@ -18,30 +18,81 @@ exports.getDashboardStats = async (req, res) => {
       "SELECT COUNT(*) AS totalUsers FROM users WHERE role != 'admin'"
     );
 
+    // Đếm sản phẩm sắp hết hàng (stock <= 10)
+    const [[{ lowStockCount }]] = await pool.query(
+      "SELECT COUNT(*) AS lowStockCount FROM products WHERE stock_quantity <= 10 AND is_active = 1"
+    );
+
     // Đơn hàng theo trạng thái
     const [ordersByStatus] = await pool.query(
       "SELECT status, COUNT(*) AS count FROM orders GROUP BY status ORDER BY count DESC"
     );
 
-    // Doanh thu 7 ngày gần nhất - lấy từ các đơn hàng KHÔNG bị hủy và KHÔNG thất bại thanh toán
-    const [revenueByDay] = await pool.query(`
-      SELECT 
-        dates.date,
-        COALESCE(SUM(o.final_amount), 0) AS revenue,
-        COUNT(o.order_id) AS order_count
-      FROM (
-        SELECT DATE(DATE_SUB(CURDATE(), INTERVAL n DAY)) AS date
+    // Doanh thu theo khoảng thời gian (mặc định 7 ngày gần nhất)
+    const { startDate, endDate } = req.query;
+    let revenueQuery = "";
+    let revenueParams = [];
+
+    if (startDate && endDate) {
+      revenueQuery = `
+        SELECT DATE(order_date) as date, COALESCE(SUM(final_amount), 0) AS revenue, COUNT(order_id) AS order_count
+        FROM orders 
+        WHERE DATE(order_date) BETWEEN ? AND ?
+        AND status NOT IN ('Đã hủy', 'Thanh toán thất bại')
+        GROUP BY DATE(order_date)
+        ORDER BY date ASC
+      `;
+      revenueParams = [startDate, endDate];
+    } else {
+      revenueQuery = `
+        SELECT 
+          dates.date,
+          COALESCE(SUM(o.final_amount), 0) AS revenue,
+          COUNT(o.order_id) AS order_count
         FROM (
-          SELECT 6 AS n UNION SELECT 5 UNION SELECT 4 
-          UNION SELECT 3 UNION SELECT 2 UNION SELECT 1 UNION SELECT 0
-        ) nums
-      ) dates
-      LEFT JOIN orders o 
-        ON DATE(o.order_date) = dates.date 
-        AND o.status NOT IN ('Đã hủy', 'Thanh toán thất bại')
-      GROUP BY dates.date
-      ORDER BY dates.date ASC
-    `);
+          SELECT DATE(DATE_SUB(CURDATE(), INTERVAL n DAY)) AS date
+          FROM (
+            SELECT 6 AS n UNION SELECT 5 UNION SELECT 4 
+            UNION SELECT 3 UNION SELECT 2 UNION SELECT 1 UNION SELECT 0
+          ) nums
+        ) dates
+        LEFT JOIN orders o 
+          ON DATE(o.order_date) = dates.date 
+          AND o.status NOT IN ('Đã hủy', 'Thanh toán thất bại')
+        GROUP BY dates.date
+        ORDER BY dates.date ASC
+      `;
+    }
+
+    const [revenueRows] = await pool.query(revenueQuery, revenueParams);
+
+    // Gộp dữ liệu để đảm bảo đủ tất cả các ngày (kể cả ngày doanh thu = 0)
+    let finalRevenueByDay = [];
+    if (startDate && endDate) {
+      let current = new Date(startDate);
+      const last = new Date(endDate);
+      
+      while (current <= last) {
+        const dateStr = current.toISOString().split('T')[0];
+        const row = revenueRows.find(r => {
+          // Xử lý cả Date object và string từ MySQL
+          const rDate = r.date instanceof Date ? r.date.toISOString().split('T')[0] : r.date;
+          return rDate === dateStr;
+        });
+        
+        finalRevenueByDay.push({
+          date: dateStr,
+          revenue: row ? row.revenue : 0,
+          order_count: row ? row.order_count : 0
+        });
+        current.setDate(current.getDate() + 1);
+      }
+    } else {
+      finalRevenueByDay = revenueRows;
+    }
+
+    const revenueByDay = finalRevenueByDay;
+    const periodRevenue = revenueByDay.reduce((sum, day) => sum + Number(day.revenue), 0);
 
     // Top 5 sản phẩm bán chạy
     const [topProducts] = await pool.query(`
@@ -63,6 +114,8 @@ exports.getDashboardStats = async (req, res) => {
         ordersByStatus,
         revenueByDay,
         topProducts,
+        lowStockCount,
+        periodRevenue,
       },
     });
   } catch (error) {

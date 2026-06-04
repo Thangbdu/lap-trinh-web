@@ -122,12 +122,12 @@ exports.getProductById = async (req, res) => {
 // [Admin] Thêm sản phẩm
 exports.createProduct = async (req, res) => {
   try {
-    const { category_id, brand_id, product_name, price, old_price, thumbnail_url, description, stock_quantity, specifications } = req.body;
+    const { category_id, brand_id, product_name, price, old_price, thumbnail_url, description, stock_quantity, specifications, is_featured } = req.body;
 
     const [result] = await pool.query(
-      `INSERT INTO products (category_id, brand_id, product_name, price, old_price, thumbnail_url, description, stock_quantity, specifications)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [category_id, brand_id || null, product_name, price, old_price || null, thumbnail_url || null, description || null, stock_quantity || 0, specifications || null]
+      `INSERT INTO products (category_id, brand_id, product_name, price, old_price, thumbnail_url, description, stock_quantity, specifications, is_featured)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [category_id, brand_id || null, product_name, price, old_price || null, thumbnail_url || null, description || null, stock_quantity || 0, specifications || null, is_featured || 0]
     );
 
     res.status(201).json({
@@ -144,12 +144,12 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { category_id, brand_id, product_name, price, old_price, thumbnail_url, description, stock_quantity, specifications, is_active } = req.body;
+    const { category_id, brand_id, product_name, price, old_price, thumbnail_url, description, stock_quantity, specifications, is_active, is_featured } = req.body;
 
     await pool.query(
-      `UPDATE products SET category_id=?, brand_id=?, product_name=?, price=?, old_price=?, thumbnail_url=?, description=?, stock_quantity=?, specifications=?, is_active=?
+      `UPDATE products SET category_id=?, brand_id=?, product_name=?, price=?, old_price=?, thumbnail_url=?, description=?, stock_quantity=?, specifications=?, is_active=?, is_featured=?
        WHERE product_id=?`,
-      [category_id, brand_id, product_name, price, old_price, thumbnail_url, description, stock_quantity, specifications, is_active, id]
+      [category_id, brand_id, product_name, price, old_price, thumbnail_url, description, stock_quantity, specifications, is_active, is_featured, id]
     );
 
     res.json({ success: true, message: 'Cập nhật sản phẩm thành công!' });

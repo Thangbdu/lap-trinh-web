@@ -117,7 +117,7 @@ export default function Checkout() {
         // Điều hướng dựa trên phương thức thanh toán
         setTimeout(() => {
           if (paymentMethod === 'COD' || paymentMethod === 'Thẻ Tín Dụng') {
-            navigate('/order-success', { state: { orderId, items } });
+            navigate('/order-success', { state: { orderId, items, paymentMethod } });
           } else {
             // MoMo, ZaloPay, Chuyển khoản -> Qua trang Gateway
             navigate(`/payment-gateway/${orderId}?method=${paymentMethod}`);

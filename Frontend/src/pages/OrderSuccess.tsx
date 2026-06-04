@@ -3,7 +3,8 @@ import { getImageUrl } from '../utils/api';
 
 export default function OrderSuccess() {
   const location = useLocation();
-  const { orderId, items } = (location.state as any) || { orderId: '?', items: [] };
+  const { orderId, items, paymentMethod } = (location.state as any) || { orderId: '?', items: [], paymentMethod: 'COD' };
+  const isCOD = paymentMethod === 'COD';
 
   return (
     <div className="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 min-h-screen flex items-center justify-center p-4 transition-colors">
@@ -22,12 +23,14 @@ export default function OrderSuccess() {
           <div className="relative mb-10">
             <div className="absolute inset-0 bg-amber-500/20 rounded-full blur-3xl animate-pulse"></div>
             <div className="relative flex items-center justify-center size-24 rounded-[2rem] bg-amber-500 text-white shadow-2xl shadow-amber-500/40 rotate-12 hover:rotate-0 transition-transform duration-500">
-              <span className="material-symbols-outlined text-5xl">pending_actions</span>
+              <span className="material-symbols-outlined text-5xl">{isCOD ? 'task_alt' : 'verified'}</span>
             </div>
           </div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">Chờ xác nhận!</h1>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">
+            {isCOD ? 'Đặt hàng thành công!' : 'Thanh toán thành công!'}
+          </h1>
           <p className="text-slate-500 dark:text-slate-400 text-base max-w-[300px] leading-relaxed">
-            Đơn hàng <b>#{orderId}</b> đã được gửi đi. Vui lòng chờ <b>Admin</b> xác nhận thông tin thanh toán và duyệt đơn hàng của bạn.
+            Đơn hàng <b>#{orderId}</b> đã được ghi nhận. Vui lòng chờ <b>Admin</b> duyệt đơn và xác nhận thông tin đơn hàng của bạn.
           </p>
         </div>
 

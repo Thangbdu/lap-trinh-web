@@ -78,8 +78,8 @@ exports.createOrder = async (req, res) => {
 
     // Tạo order
     const [orderResult] = await connection.query(
-      `INSERT INTO orders (user_id, address_id, promo_id, total_amount, discount_amount, final_amount)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO orders (user_id, address_id, promo_id, total_amount, discount_amount, final_amount, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'Chờ xác nhận')`,
       [req.user.user_id, address_id, promo_id, total_amount, discount_amount, final_amount]
     );
 

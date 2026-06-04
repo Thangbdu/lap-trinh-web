@@ -13,6 +13,7 @@ interface DashboardStats {
   ordersByStatus: { status: string; count: number }[];
   revenueByDay: { date: string; revenue: number }[];
   topProducts: { product_name: string; total_sold: number; revenue: number }[];
+  periodRevenue?: number;
 }
 
 interface Product {
@@ -26,6 +27,7 @@ interface Product {
   brand_name?: string;
   thumbnail_url?: string;
   primary_image?: string;
+  is_featured?: number;
 }
 
 interface Order {
@@ -81,6 +83,7 @@ function ProductModal({
     description: '',
     specifications: '',
     is_active: product?.is_active ?? 1,
+    is_featured: product?.is_featured ?? 0,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -147,10 +150,26 @@ function ProductModal({
             <textarea name="description" onChange={handle} style={{ ...styles.input, height: 80 }} />
           </label>
           {isEdit && (
-            <label style={styles.label}>Trạng thái
-              <select name="is_active" value={form.is_active} onChange={handle} style={styles.input}>
-                <option value={1}>Đang bán</option>
-                <option value={0}>Ẩn</option>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <label style={styles.label}>Trạng thái
+                <select name="is_active" value={form.is_active} onChange={handle} style={styles.input}>
+                  <option value={1}>Đang bán</option>
+                  <option value={0}>Ẩn</option>
+                </select>
+              </label>
+              <label style={styles.label}>Hiện ở trang chủ
+                <select name="is_featured" value={form.is_featured} onChange={handle} style={styles.input}>
+                  <option value={1}>✅ Có</option>
+                  <option value={0}>❌ Không</option>
+                </select>
+              </label>
+            </div>
+          )}
+          {!isEdit && (
+            <label style={styles.label}>Hiện ở trang chủ
+              <select name="is_featured" value={form.is_featured} onChange={handle} style={styles.input}>
+                <option value={0}>❌ Không</option>
+                <option value={1}>✅ Có</option>
               </select>
             </label>
           )}
@@ -251,6 +270,12 @@ export default function Admin() {
   const [approving, setApproving] = useState<number | null>(null);
   const [toast, setToast] = useState('');
 
+  // Dashboard filtering
+  const [dashDates, setDashDates] = useState({
+    start: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
+
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(''), 3000);
@@ -273,13 +298,13 @@ export default function Admin() {
   const loadDashboard = useCallback(async () => {
     setLoadingData(true);
     try {
-      const r = await api.get<any>('/admin/dashboard');
+      const r = await api.get<any>(`/admin/dashboard?startDate=${dashDates.start}&endDate=${dashDates.end}`);
       // Backend trả về { success, data: { totalRevenue, ... } }
       if (r.data) setStats(r.data as DashboardStats);
     } catch (err) {
       console.error('Dashboard load error:', err);
     } finally { setLoadingData(false); }
-  }, []);
+  }, [dashDates]);
 
   // Load products
   const loadProducts = useCallback(async () => {
@@ -631,6 +656,41 @@ export default function Admin() {
         {/* ── DASHBOARD ── */}
         {tab === 'dashboard' && (
           <>
+            {/* Date filter bar */}
+            <div style={{ ...styles.dashCard, marginBottom: 20, padding: '16px 24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ p: 10, background: '#312e81', borderRadius: 10, color: '#a5b4fc', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40 }}>📅</div>
+                  <div>
+                    <h3 style={{ ...styles.cardTitle, margin: 0 }}>Lọc doanh thu theo ngày</h3>
+                    <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>Chọn khoảng thời gian bạn muốn thống kê</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13, color: '#94a3b8' }}>Từ:</span>
+                    <input 
+                      type="date" 
+                      value={dashDates.start} 
+                      onChange={e => setDashDates(prev => ({ ...prev, start: e.target.value }))}
+                      style={{ ...styles.input, marginTop: 0, padding: '6px 12px' }} 
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 13, color: '#94a3b8' }}>Đến:</span>
+                    <input 
+                      type="date" 
+                      value={dashDates.end} 
+                      onChange={e => setDashDates(prev => ({ ...prev, end: e.target.value }))}
+                      style={{ ...styles.input, marginTop: 0, padding: '6px 12px' }} 
+                    />
+                  </div>
+                  <button onClick={loadDashboard} style={{ ...styles.btnPrimary, padding: '8px 16px', fontSize: 13 }}>
+                    Áp dụng
+                  </button>
+                </div>
+              </div>
+            </div>
             {loadingData ? <div style={styles.skeletonWrap}>{[...Array(4)].map((_, i) => <div key={i} style={styles.skeleton} />)}</div> : stats && (
               <>
                 {/* Stat cards */}
@@ -710,8 +770,12 @@ export default function Admin() {
                   <div style={{ position: 'absolute', top: 0, right: 0, width: 150, height: 150, background: 'radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                     <div>
-                      <h3 style={styles.cardTitle}>Doanh thu 7 ngày gần nhất</h3>
-                      <p style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Biểu đồ tăng trưởng dựa trên doanh số thực tế</p>
+                      <h3 style={styles.cardTitle}>Doanh thu từ {new Date(dashDates.start).toLocaleDateString('vi-VN')} đến {new Date(dashDates.end).toLocaleDateString('vi-VN')}</h3>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                        <span style={{ fontSize: 24, fontWeight: 900, color: '#10b981' }}>{fmt(stats.periodRevenue || 0)}</span>
+                        <span style={{ fontSize: 12, color: '#64748b' }}>Tổng doanh thu kỳ này</span>
+                      </div>
+                      <p style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Biểu đồ tăng trưởng dựa trên doanh số thực tế</p>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                        <span style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 4, color: '#94a3b8' }}>
@@ -826,7 +890,24 @@ export default function Admin() {
                       <td style={styles.td}>{p.category_name ?? '—'}</td>
                       <td style={styles.td}><span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(p.price)}</span></td>
                       <td style={styles.td}>
-                        <span style={{ ...(p.stock_quantity <= 5 ? { color: '#ef4444' } : { color: '#94a3b8' }) }}>{p.stock_quantity}</span>
+                        {p.stock_quantity <= 10 ? (
+                          <span style={{ 
+                            background: p.stock_quantity === 0 ? '#450a0a' : '#78350f', 
+                            color: p.stock_quantity === 0 ? '#fca5a5' : '#fcd34d',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            border: `1px solid ${p.stock_quantity === 0 ? '#7f1d1d' : '#92400e'}`
+                          }}>
+                            {p.stock_quantity === 0 ? '🚫 Hết hàng' : `⚠️ Còn ${p.stock_quantity}`}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#94a3b8' }}>{p.stock_quantity}</span>
+                        )}
                       </td>
                       <td style={styles.td}>
                         <span style={{ ...styles.badge, background: p.is_active ? '#064e3b' : '#450a0a', color: p.is_active ? '#6ee7b7' : '#fca5a5' }}>
@@ -887,13 +968,32 @@ export default function Admin() {
                       <td style={styles.td}><span style={{ color: '#10b981', fontWeight: 700 }}>{fmt(o.final_amount)}</span></td>
                       <td style={styles.td}><span style={{ fontSize: 12, color: '#64748b' }}>{new Date(o.order_date).toLocaleDateString('vi-VN')}</span></td>
                       <td style={styles.td}>
-                        <select
-                          value={o.status}
-                          onChange={e => updateOrderStatus(o.order_id, e.target.value)}
-                          style={{ ...styles.statusSelect, background: statusColor[o.status] ?? '#374151' }}
-                        >
-                          {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <select
+                            value={o.status}
+                            onChange={e => updateOrderStatus(o.order_id, e.target.value)}
+                            style={{ ...styles.statusSelect, background: statusColor[o.status] ?? '#374151' }}
+                          >
+                            {ORDER_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                          {o.status === 'Chờ xác nhận' && (
+                            <button
+                              onClick={() => updateOrderStatus(o.order_id, 'Đang xử lý')}
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: 8,
+                                background: 'linear-gradient(135deg,#059669,#10b981)',
+                                color: '#fff',
+                                border: 'none',
+                                fontSize: 11,
+                                fontWeight: 'bold',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Duyệt
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

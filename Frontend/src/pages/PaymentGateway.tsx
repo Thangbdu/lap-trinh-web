@@ -41,7 +41,7 @@ export default function PaymentGateway() {
             setOrder(res.data);
             // Nếu admin đã duyệt thì thành công
             if (res.data.payment_status === 'Đã thanh toán') {
-               navigate('/order-success', { state: { orderId: res.data.order_id, items: res.data.items } });
+               navigate('/order-success', { state: { orderId: res.data.order_id, items: res.data.items, paymentMethod: res.data.payment_method } });
             }
             // Nếu admin từ chối
             if (res.data.payment_status === 'Thanh toán thất bại' || res.data.status === 'Đã hủy') {

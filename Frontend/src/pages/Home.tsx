@@ -541,7 +541,7 @@ export default function Home() {
   const fetchProducts = async (brandId?: number | null, categoryId?: number | null, categoryIds?: string | null, search?: string) => {
     setProductsLoading(true);
     try {
-      let query = '/products?limit=50';
+      let query = '/products?limit=20';
       if (search) query += `&search=${encodeURIComponent(search)}`;
       else if (brandId) query += `&brand_id=${brandId}`;
       else if (categoryIds) query += `&category_ids=${categoryIds}`;

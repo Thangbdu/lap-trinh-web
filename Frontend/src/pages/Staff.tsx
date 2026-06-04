@@ -439,7 +439,24 @@ export default function Staff() {
                       <td style={styles.td}>{p.category_name ?? '—'}</td>
                       <td style={styles.td}><span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(p.price)}</span></td>
                       <td style={styles.td}>
-                        <span style={{ ...(p.stock_quantity <= 5 ? { color: '#ef4444' } : { color: '#94a3b8' }) }}>{p.stock_quantity}</span>
+                        {p.stock_quantity <= 10 ? (
+                          <span style={{ 
+                            background: p.stock_quantity === 0 ? '#450a0a' : '#78350f', 
+                            color: p.stock_quantity === 0 ? '#fca5a5' : '#fcd34d',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            border: `1px solid ${p.stock_quantity === 0 ? '#7f1d1d' : '#92400e'}`
+                          }}>
+                            {p.stock_quantity === 0 ? '🚫 Hết hàng' : `⚠️ Còn ${p.stock_quantity}`}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#94a3b8' }}>{p.stock_quantity}</span>
+                        )}
                       </td>
                       <td style={styles.td}>
                         <span style={{ ...styles.badge, background: p.is_active ? '#064e3b' : '#450a0a', color: p.is_active ? '#6ee7b7' : '#fca5a5' }}>
